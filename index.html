@@ -315,25 +315,16 @@
             width: 100%;
             height: 350px;
             position: relative;
-            background: #050505;
-            overflow: visible;
+            background: #080808;
+            overflow: hidden;
         }
 
         .world-map svg {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            display: block;
-        }
-
-        .world-map .land {
-            fill: #1e1e1e;
-            stroke: #333;
-            stroke-width: 0.5;
-        }
-
-        .world-map .grid-line {
-            stroke: #151515;
-            stroke-width: 0.5;
         }
 
         .hotspot {
@@ -891,57 +882,13 @@
         function renderGlobalMap(activityData) {
             const panel = document.getElementById('mapPanel');
 
-            // Better world map with grid lines
-            const mapSVG = `
-                <svg viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" style="background: #050505;">
-                    <!-- Grid lines -->
-                    <g class="grid-lines" opacity="0.3">
-                        ${[...Array(19)].map((_, i) => `<line x1="0" y1="${i * 27.78}" x2="1000" y2="${i * 27.78}" stroke="#222" stroke-width="0.5"/>`).join('')}
-                        ${[...Array(37)].map((_, i) => `<line x1="${i * 27.78}" y1="0" x2="${i * 27.78}" y2="500" stroke="#222" stroke-width="0.5"/>`).join('')}
-                    </g>
-                    <!-- Simplified but better continent shapes -->
-                    <g class="continents">
-                        <!-- North America -->
-                        <path class="land" d="M80,90 L120,70 L180,65 L220,75 L260,70 L280,90 L275,120 L290,140 L280,170 L250,180 L230,200 L200,210 L170,200 L140,220 L120,200 L100,180 L80,160 L70,130 L75,100 Z"/>
-                        <!-- Central America -->
-                        <path class="land" d="M170,200 L200,210 L210,230 L190,260 L175,270 L165,250 L170,230 Z"/>
-                        <!-- South America -->
-                        <path class="land" d="M190,260 L220,250 L260,270 L280,300 L290,350 L280,400 L250,430 L220,420 L200,380 L190,340 L185,300 L175,270 Z"/>
-                        <!-- Europe -->
-                        <path class="land" d="M440,70 L480,60 L520,65 L550,80 L560,100 L540,120 L510,130 L480,125 L460,140 L440,130 L430,100 L435,80 Z"/>
-                        <!-- UK -->
-                        <path class="land" d="M420,80 L435,75 L440,90 L430,100 L420,95 Z"/>
-                        <!-- Africa -->
-                        <path class="land" d="M440,160 L480,150 L530,160 L560,190 L580,230 L590,280 L580,330 L550,370 L510,390 L470,380 L440,350 L430,300 L435,250 L450,200 Z"/>
-                        <!-- Middle East -->
-                        <path class="land" d="M540,140 L580,130 L620,150 L610,180 L580,190 L550,180 L540,160 Z"/>
-                        <!-- Russia/Asia -->
-                        <path class="land" d="M560,60 L650,40 L750,35 L850,50 L900,70 L920,100 L900,130 L850,140 L800,130 L750,140 L700,135 L650,145 L600,130 L560,100 Z"/>
-                        <!-- China/East Asia -->
-                        <path class="land" d="M700,140 L780,130 L830,150 L850,180 L840,220 L800,240 L750,235 L710,210 L690,180 L695,155 Z"/>
-                        <!-- India -->
-                        <path class="land" d="M620,160 L670,155 L690,180 L700,220 L680,260 L640,280 L610,260 L600,220 L610,190 Z"/>
-                        <!-- Southeast Asia -->
-                        <path class="land" d="M750,235 L780,230 L810,250 L800,280 L770,290 L740,270 L745,250 Z"/>
-                        <!-- Japan -->
-                        <path class="land" d="M870,140 L885,135 L895,150 L890,170 L875,175 L865,160 Z"/>
-                        <!-- Australia -->
-                        <path class="land" d="M780,320 L850,310 L900,330 L920,370 L900,410 L850,420 L800,400 L780,360 Z"/>
-                        <!-- New Zealand -->
-                        <path class="land" d="M930,400 L945,395 L950,420 L940,430 L930,415 Z"/>
-                    </g>
-                </svg>
-            `;
-
             let hotspotsHTML = '';
-            const mapWidth = 1000;
-            const mapHeight = 500;
 
             INTEL_HOTSPOTS.forEach(spot => {
-                const { x, y } = latLonToXY(spot.lat, spot.lon, mapWidth, mapHeight);
                 const activity = activityData[spot.id] || { level: 'low', score: 0 };
-                const xPercent = (x / mapWidth) * 100;
-                const yPercent = (y / mapHeight) * 100;
+                // Convert lat/lon to percentage position on equirectangular projection
+                const xPercent = ((spot.lon + 180) / 360) * 100;
+                const yPercent = ((90 - spot.lat) / 180) * 100;
 
                 hotspotsHTML += `
                     <div class="hotspot ${activity.level}" style="left: ${xPercent}%; top: ${yPercent}%;">
@@ -954,9 +901,58 @@
                 `;
             });
 
+            // Simple inline SVG world map
+            const worldMapSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1000" preserveAspectRatio="xMidYMid slice">
+                <rect width="2000" height="1000" fill="#080808"/>
+                <g fill="#1a1a1a" stroke="#2d2d2d" stroke-width="1">
+                    <!-- North America -->
+                    <path d="M165,195 L205,155 L255,135 L315,115 L375,105 L420,115 L455,140 L485,120 L530,125 L545,145 L530,175 L555,195 L560,235 L535,275 L500,295 L475,340 L430,360 L395,340 L355,365 L320,340 L285,355 L255,330 L235,295 L200,285 L175,255 L160,220Z"/>
+                    <!-- Greenland -->
+                    <path d="M545,85 L605,55 L665,65 L695,95 L680,135 L625,155 L575,145 L550,115Z"/>
+                    <!-- South America -->
+                    <path d="M355,420 L400,395 L445,415 L485,455 L510,515 L525,585 L510,665 L475,735 L420,755 L375,715 L345,645 L340,575 L355,505 L345,455Z"/>
+                    <!-- Europe -->
+                    <path d="M880,135 L925,115 L985,120 L1030,135 L1060,160 L1045,195 L1005,215 L960,205 L920,225 L885,215 L865,175 L870,145Z"/>
+                    <!-- UK/Ireland -->
+                    <path d="M835,155 L865,145 L875,175 L855,195 L830,185Z"/>
+                    <path d="M815,175 L835,165 L840,185 L825,195Z"/>
+                    <!-- Scandinavia -->
+                    <path d="M925,75 L965,55 L1005,75 L1020,115 L995,145 L955,135 L930,105Z"/>
+                    <!-- Africa -->
+                    <path d="M885,280 L945,260 L1015,275 L1075,320 L1110,385 L1120,465 L1095,545 L1045,615 L975,645 L905,625 L855,565 L845,485 L860,405 L880,335Z"/>
+                    <!-- Middle East -->
+                    <path d="M1045,225 L1105,215 L1155,245 L1175,295 L1145,335 L1095,345 L1055,315 L1045,265Z"/>
+                    <!-- Russia -->
+                    <path d="M1075,75 L1205,45 L1385,35 L1545,55 L1665,85 L1745,65 L1825,95 L1865,135 L1845,175 L1755,195 L1665,175 L1545,195 L1425,185 L1305,205 L1205,195 L1125,175 L1075,135Z"/>
+                    <!-- India -->
+                    <path d="M1225,285 L1295,265 L1345,295 L1365,355 L1345,425 L1295,465 L1235,445 L1195,385 L1205,325Z"/>
+                    <!-- China -->
+                    <path d="M1385,195 L1505,175 L1605,195 L1665,235 L1685,305 L1645,365 L1565,385 L1485,365 L1405,385 L1345,345 L1345,275 L1385,235Z"/>
+                    <!-- Southeast Asia -->
+                    <path d="M1445,395 L1505,385 L1565,415 L1585,465 L1545,515 L1485,525 L1435,495 L1425,445Z"/>
+                    <!-- Japan -->
+                    <path d="M1725,225 L1765,205 L1795,235 L1785,285 L1745,305 L1715,275Z"/>
+                    <!-- Australia -->
+                    <path d="M1545,585 L1665,555 L1765,595 L1815,665 L1785,755 L1695,785 L1595,755 L1545,685Z"/>
+                    <!-- New Zealand -->
+                    <path d="M1855,745 L1885,725 L1905,765 L1885,805 L1855,785Z"/>
+                    <!-- Indonesia -->
+                    <path d="M1485,535 L1545,525 L1605,545 L1575,575 L1515,565Z"/>
+                </g>
+                <!-- Grid lines -->
+                <g stroke="#1a1a1a" stroke-width="0.5" opacity="0.5">
+                    <line x1="0" y1="500" x2="2000" y2="500"/>
+                    <line x1="1000" y1="0" x2="1000" y2="1000"/>
+                    <line x1="0" y1="250" x2="2000" y2="250"/>
+                    <line x1="0" y1="750" x2="2000" y2="750"/>
+                    <line x1="500" y1="0" x2="500" y2="1000"/>
+                    <line x1="1500" y1="0" x2="1500" y2="1000"/>
+                </g>
+            </svg>`;
+
             panel.innerHTML = `
                 <div class="world-map">
-                    ${mapSVG}
+                    ${worldMapSVG}
                     ${hotspotsHTML}
                 </div>
             `;
