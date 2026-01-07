@@ -939,15 +939,22 @@
             grid-column: span 2;
         }
 
+        .panel-livestream {
+            min-height: auto;
+        }
+
         .livestream-container {
             padding: 0 !important;
-            height: 350px;
+            aspect-ratio: 16 / 9;
+            max-height: none;
+            overflow: hidden;
         }
 
         .livestream-container iframe {
             width: 100%;
             height: 100%;
             border: none;
+            display: block;
         }
 
         .live-indicator {
@@ -1348,7 +1355,7 @@
         </section>
 
         <!-- TBPN Livestream -->
-        <section class="panel panel-wide" data-panel="tbpn" style="grid-column: span 4;">
+        <section class="panel panel-wide panel-livestream" data-panel="tbpn" style="grid-column: span 4;">
             <div class="panel-header">
                 <span class="panel-title">Livestream</span>
                 <span class="live-indicator">LIVE</span>
