@@ -9,14 +9,7 @@ import {
     fetchGovContracts, fetchAINews, fetchFedBalance, fetchPolymarket,
     fetchLayoffs, fetchSituationNews, fetchIntelFeed
 } from './data.js';
-import {
-    renderGlobalMap, analyzeHotspotActivity, setMapView,
-    mapZoomIn, mapZoomOut, mapZoomReset, updateFlashback
-} from './map.js';
-import {
-    mapLayers, toggleLayer, toggleSatelliteLayer,
-    fetchFlightData, classifyAircraft, getAircraftArrow
-} from './layers.js';
+import { renderGlobalMap, analyzeHotspotActivity } from './map.js';
 import {
     isPanelEnabled, togglePanel, toggleSettings, applyPanelSettings,
     initPanels, resetPanelOrder
@@ -35,42 +28,19 @@ import {
 import {
     renderMonitorsList, openMonitorForm, closeMonitorForm,
     selectMonitorColor, saveMonitor, editMonitor, deleteMonitor,
-    renderMonitorsPanel, getMonitorHotspots
+    renderMonitorsPanel
 } from './monitors.js';
-import {
-    showHotspotPopup, showConflictPopup, showUSCityPopup,
-    showUSHotspotPopup, showChokepointPopup, showQuakePopup,
-    showCyberPopup, showCustomHotspotPopup, showAircraftPopup
-} from './popups.js';
 
 // Expose functions to window for onclick handlers
 window.togglePanel = (id) => togglePanel(id, refreshAll);
 window.toggleSettings = () => toggleSettings(renderMonitorsList);
 window.resetPanelOrder = resetPanelOrder;
-window.setMapView = (mode) => setMapView(mode, refreshAll);
-window.mapZoomIn = mapZoomIn;
-window.mapZoomOut = mapZoomOut;
-window.mapZoomReset = mapZoomReset;
-window.toggleLayer = (layer) => {
-    toggleLayer(layer, refreshAll);
-};
-window.toggleSatelliteLayer = () => toggleSatelliteLayer(refreshAll);
-window.updateFlashback = updateFlashback;
 window.openMonitorForm = openMonitorForm;
 window.closeMonitorForm = closeMonitorForm;
 window.selectMonitorColor = selectMonitorColor;
 window.saveMonitor = () => saveMonitor(refreshAll);
 window.editMonitor = editMonitor;
 window.deleteMonitor = (id) => deleteMonitor(id, refreshAll);
-window.showHotspotPopup = showHotspotPopup;
-window.showConflictPopup = showConflictPopup;
-window.showUSCityPopup = showUSCityPopup;
-window.showUSHotspotPopup = showUSHotspotPopup;
-window.showChokepointPopup = showChokepointPopup;
-window.showQuakePopup = showQuakePopup;
-window.showCyberPopup = showCyberPopup;
-window.showCustomHotspotPopup = showCustomHotspotPopup;
-window.showAircraftPopup = showAircraftPopup;
 
 // Staged refresh - loads critical data first for faster perceived startup
 async function refreshAll() {
@@ -141,20 +111,11 @@ async function refreshAll() {
     if (isPanelEnabled('polymarket')) renderPolymarket(polymarket);
     if (isPanelEnabled('printer')) renderMoneyPrinter(fedBalance);
 
-    // Render map - ALWAYS try even if feeds failed
+    // Render map
     if (isPanelEnabled('map')) {
         try {
             const activityData = analyzeHotspotActivity(allNews);
-            await renderGlobalMap(
-                activityData,
-                earthquakes,
-                allNews,
-                mapLayers,
-                getMonitorHotspots,
-                fetchFlightData,
-                classifyAircraft,
-                getAircraftArrow
-            );
+            await renderGlobalMap(activityData, earthquakes, allNews);
         } catch (mapError) {
             console.error('Map render error:', mapError);
         }
