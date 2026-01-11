@@ -1,14 +1,18 @@
 /**
  * News API - Fetch news from Google News RSS feeds
- * Uses Cloudflare Worker for RSS-to-JSON parsing
+ * Direct XML parsing in browser
  */
 
 import type { NewsItem, NewsCategory } from '$lib/types';
 import { containsAlertKeyword, detectRegion, detectTopics } from '$lib/config/keywords';
 import { API_DELAYS, logger } from '$lib/config/api';
 
-// Cloudflare Worker URL for RSS parsing
-const WORKER_URL = 'https://situation-monitor-proxy.seanthielen-e.workers.dev';
+// CORS proxies for fetching RSS feeds
+const CORS_PROXIES = [
+	'https://api.allorigins.win/raw?url=',
+	'https://corsproxy.io/?',
+	'https://api.codetabs.com/v1/proxy?quest='
+];
 
 /**
  * Priority news sources - higher quality and reliability
@@ -105,6 +109,75 @@ function decodeHTMLEntities(text: string): string {
 }
 
 /**
+ * Parse RSS feed using DOMParser
+ */
+function parseRSSFeed(xmlText: string, category: NewsCategory): NewsItem[] {
+	const parser = new DOMParser();
+	const xml = parser.parseFromString(xmlText, 'text/xml');
+	
+	const parseError = xml.querySelector('parsererror');
+	if (parseError) {
+		logger.error('News API', 'XML parse error');
+		return [];
+	}
+
+	const items: NewsItem[] = [];
+	const itemNodes = xml.querySelectorAll('item');
+	
+	itemNodes.forEach((item, index) => {
+		const title = item.querySelector('title')?.textContent?.trim() || '';
+		const link = item.querySelector('link')?.textContent?.trim() || '';
+		const pubDate = item.querySelector('pubDate')?.textContent?.trim() || '';
+		const source = item.querySelector('source')?.textContent?.trim() || 'Google News';
+
+		if (!title || !link) return;
+
+		const alert = containsAlertKeyword(title);
+
+		items.push({
+			id: `gnews-${category}-${hashCode(link)}-${index}`,
+			title: decodeHTMLEntities(title),
+			link,
+			pubDate,
+			timestamp: pubDate ? new Date(pubDate).getTime() : Date.now(),
+			source: decodeHTMLEntities(source),
+			category,
+			isAlert: !!alert,
+			alertKeyword: alert?.keyword || undefined,
+			region: detectRegion(title) ?? undefined,
+			topics: detectTopics(title),
+			relevanceScore: calculateRelevanceScore(title, source, pubDate)
+		});
+	});
+
+	return items;
+}
+
+/**
+ * Fetch with CORS proxy fallback
+ */
+async function fetchWithProxy(url: string): Promise<string> {
+	for (let i = 0; i < CORS_PROXIES.length; i++) {
+		try {
+			const proxyUrl = CORS_PROXIES[i] + encodeURIComponent(url);
+			const response = await fetch(proxyUrl, {
+				signal: AbortSignal.timeout(15000)
+			});
+			
+			if (response.ok) {
+				return await response.text();
+			}
+		} catch (err) {
+			if (i === CORS_PROXIES.length - 1) {
+				throw err;
+			}
+			// Try next proxy
+		}
+	}
+	throw new Error('All proxies failed');
+}
+
+/**
  * Search terms for each category - optimized for geopolitical intelligence
  */
 const CATEGORY_QUERIES: Record<NewsCategory, string> = {
@@ -124,73 +197,24 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Fetch news for a specific category using Cloudflare Worker JSON API
+ * Fetch news for a specific category
  */
 export async function fetchCategoryNews(category: NewsCategory): Promise<NewsItem[]> {
 	try {
 		const query = encodeURIComponent(CATEGORY_QUERIES[category]);
 		const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
-		const workerUrl = `${WORKER_URL}/?url=${encodeURIComponent(rssUrl)}&format=json`;
 
-		logger.log('News API', `Fetching ${category} from Worker`);
+		logger.log('News API', `Fetching ${category} news`);
 
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 15000);
+		const xmlText = await fetchWithProxy(rssUrl);
+		const articles = parseRSSFeed(xmlText, category);
 
-		try {
-			const response = await fetch(workerUrl, { signal: controller.signal });
-			clearTimeout(timeoutId);
+		const sorted = articles
+			.sort((a: NewsItem, b: NewsItem) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+			.slice(0, 15);
 
-			if (!response.ok) {
-				logger.error('News API', `HTTP ${response.status} for ${category}`);
-				return [];
-			}
-
-			const data = await response.json();
-			
-			if (data.status !== 'ok' || !data.items || !Array.isArray(data.items)) {
-				logger.warn('News API', `Invalid response for ${category}`);
-				return [];
-			}
-
-			const articles = data.items.slice(0, 20).map((item: any, index: number) => {
-				const title = (item.title || '').trim();
-				const source = (item.source || 'Google News').trim();
-				const link = item.link || '';
-				const pubDate = item.pubDate || '';
-				const alert = containsAlertKeyword(title);
-
-				return {
-					id: `gnews-${category}-${hashCode(link)}-${index}`,
-					title: decodeHTMLEntities(title),
-					link,
-					pubDate,
-					timestamp: pubDate ? new Date(pubDate).getTime() : Date.now(),
-					source: decodeHTMLEntities(source),
-					category,
-					isAlert: !!alert,
-					alertKeyword: alert?.keyword || undefined,
-					region: detectRegion(title) ?? undefined,
-					topics: detectTopics(title),
-					relevanceScore: calculateRelevanceScore(title, source, pubDate)
-				};
-			});
-
-			const sorted = articles
-				.sort((a: NewsItem, b: NewsItem) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
-				.slice(0, 15);
-
-			logger.log('News API', `Fetched ${sorted.length} ${category} articles`);
-			return sorted;
-		} catch (fetchError) {
-			clearTimeout(timeoutId);
-			if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-				logger.error('News API', `Timeout for ${category}`);
-			} else {
-				logger.error('News API', `Fetch error for ${category}:`, fetchError);
-			}
-			return [];
-		}
+		logger.log('News API', `Fetched ${sorted.length} ${category} articles`);
+		return sorted;
 	} catch (error) {
 		logger.error('News API', `Error fetching ${category}:`, error);
 		return [];
