@@ -3,7 +3,6 @@
  * Uses Mistral 8B via OpenRouter to analyze headlines for significance
  */
 
-import { PUBLIC_OPENROUTER_API_KEY } from '$env/static/public';
 import type { NewsItem } from '$lib/types';
 
 // Check if we're in a browser environment
@@ -11,8 +10,27 @@ const browser = typeof window !== 'undefined';
 
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_API_KEY = PUBLIC_OPENROUTER_API_KEY || '';
 const MODEL = 'mistralai/ministral-8b';
+
+// API key storage - users can set this in browser localStorage
+const API_KEY_STORAGE_KEY = 'openRouterApiKey';
+
+// Get API key from localStorage (set by user in settings)
+function getApiKey(): string {
+	if (!browser) return '';
+	return localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+}
+
+// Set API key in localStorage
+export function setApiKey(key: string): void {
+	if (!browser) return;
+	localStorage.setItem(API_KEY_STORAGE_KEY, key);
+}
+
+// Check if API key is configured
+export function hasApiKey(): boolean {
+	return !!getApiKey();
+}
 
 // Storage keys
 const NOTIFICATION_ENABLED_KEY = 'notificationsEnabled';
@@ -137,8 +155,10 @@ function showNotification(title: string, body: string, url?: string): void {
 
 // Analyze headlines with AI to determine significance
 async function analyzeHeadlines(headlines: string[]): Promise<number[]> {
+	const apiKey = getApiKey();
+	
 	// Skip AI analysis if no API key configured
-	if (!OPENROUTER_API_KEY) {
+	if (!apiKey) {
 		return headlines.map(() => 5); // Default to moderate significance
 	}
 	
@@ -146,7 +166,7 @@ async function analyzeHeadlines(headlines: string[]): Promise<number[]> {
 		const response = await fetch(OPENROUTER_API_URL, {
 			method: 'POST',
 			headers: {
-				'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+				'Authorization': `Bearer ${apiKey}`,
 				'Content-Type': 'application/json',
 				'HTTP-Referer': browser ? window.location.origin : 'https://situation-monitor.app',
 				'X-Title': 'Situation Monitor'
