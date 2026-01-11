@@ -2,11 +2,11 @@
  * Markets API - Fetch market data from various sources
  */
 
-import { ServiceClient } from '$lib/services/client';
 import { INDICES, SECTORS, COMMODITIES, CRYPTO } from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
 
-const client = new ServiceClient({ debug: false });
+// Proxy URL for CORS requests
+const PROXY_URL = 'https://situation-monitor-proxy.seanthielen-e.workers.dev/?url=';
 
 interface CoinGeckoPrice {
 	usd: number;
@@ -18,25 +18,33 @@ interface CoinGeckoPricesResponse {
 }
 
 /**
- * Fetch crypto prices from CoinGecko
+ * Fetch crypto prices from CoinGecko via proxy
  */
 export async function fetchCryptoPrices(): Promise<CryptoItem[]> {
 	try {
 		const ids = CRYPTO.map((c) => c.id).join(',');
-		const result = await client.request<CoinGeckoPricesResponse>(
-			'COINGECKO',
-			`/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
-		);
+		const coinGeckoUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+
+		// Use proxy to avoid CORS/rate limiting issues
+		const proxyUrl = PROXY_URL + encodeURIComponent(coinGeckoUrl);
+		console.log('[Markets API] Fetching crypto from:', proxyUrl);
+
+		const response = await fetch(proxyUrl);
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+
+		const data: CoinGeckoPricesResponse = await response.json();
 
 		return CRYPTO.map((crypto) => {
-			const data = result.data[crypto.id];
+			const priceData = data[crypto.id];
 			return {
 				id: crypto.id,
 				symbol: crypto.symbol,
 				name: crypto.name,
-				current_price: data?.usd || 0,
-				price_change_24h: data?.usd_24h_change || 0,
-				price_change_percentage_24h: data?.usd_24h_change || 0
+				current_price: priceData?.usd || 0,
+				price_change_24h: priceData?.usd_24h_change || 0,
+				price_change_percentage_24h: priceData?.usd_24h_change || 0
 			};
 		});
 	} catch (error) {

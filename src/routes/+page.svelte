@@ -33,13 +33,27 @@
 		settings,
 		refresh
 	} from '$lib/stores';
-	import { fetchAllNews, fetchAllMarkets } from '$lib/api';
+	import {
+		fetchAllNews,
+		fetchAllMarkets,
+		fetchPolymarket,
+		fetchWhaleTransactions,
+		fetchGovContracts,
+		fetchLayoffs
+	} from '$lib/api';
+	import type { Prediction, WhaleTransaction, Contract, Layoff } from '$lib/api';
 	import type { CustomMonitor } from '$lib/types';
 
 	// Modal state
 	let settingsOpen = $state(false);
 	let monitorFormOpen = $state(false);
 	let editingMonitor = $state<CustomMonitor | null>(null);
+
+	// Misc panel data
+	let predictions = $state<Prediction[]>([]);
+	let whales = $state<WhaleTransaction[]>([]);
+	let contracts = $state<Contract[]>([]);
+	let layoffs = $state<Layoff[]>([]);
 
 	// Derived data for panels that need aggregated news
 	const allNewsItems = $derived([
@@ -76,6 +90,23 @@
 			markets.setCrypto(data.crypto);
 		} catch (error) {
 			console.error('Failed to load markets:', error);
+		}
+	}
+
+	async function loadMiscData() {
+		try {
+			const [predictionsData, whalesData, contractsData, layoffsData] = await Promise.all([
+				fetchPolymarket(),
+				fetchWhaleTransactions(),
+				fetchGovContracts(),
+				fetchLayoffs()
+			]);
+			predictions = predictionsData;
+			whales = whalesData;
+			contracts = contractsData;
+			layoffs = layoffsData;
+		} catch (error) {
+			console.error('Failed to load misc data:', error);
 		}
 	}
 
@@ -116,6 +147,7 @@
 	onMount(() => {
 		loadNews();
 		loadMarkets();
+		loadMiscData();
 		refresh.setupAutoRefresh(handleRefresh);
 
 		return () => {
@@ -280,25 +312,25 @@
 			<!-- Placeholder panels for additional data sources -->
 			{#if isPanelVisible('whales')}
 				<div class="panel-slot">
-					<WhalePanel />
+					<WhalePanel {whales} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('polymarket')}
 				<div class="panel-slot">
-					<PolymarketPanel />
+					<PolymarketPanel {predictions} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('contracts')}
 				<div class="panel-slot">
-					<ContractsPanel />
+					<ContractsPanel {contracts} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('layoffs')}
 				<div class="panel-slot">
-					<LayoffsPanel />
+					<LayoffsPanel {layoffs} />
 				</div>
 			{/if}
 		</Dashboard>
