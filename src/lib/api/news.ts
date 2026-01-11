@@ -1,11 +1,14 @@
 /**
- * News API - Fetch news from Google News RSS feeds (client-side)
- * Uses CORS proxy for cross-origin requests
+ * News API - Fetch news from Google News RSS feeds
+ * Uses Cloudflare Worker for RSS-to-JSON parsing
  */
 
 import type { NewsItem, NewsCategory } from '$lib/types';
 import { containsAlertKeyword, detectRegion, detectTopics } from '$lib/config/keywords';
-import { CORS_PROXY_URL, API_DELAYS, logger } from '$lib/config/api';
+import { API_DELAYS, logger } from '$lib/config/api';
+
+// Cloudflare Worker URL for RSS parsing
+const WORKER_URL = 'https://situation-monitor-proxy.seanthielen-e.workers.dev';
 
 /**
  * Priority news sources - higher quality and reliability
@@ -177,60 +180,75 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * Fetch news for a specific category using Google News RSS via CORS proxy
+ * Fetch news for a specific category using Cloudflare Worker JSON API
  */
 export async function fetchCategoryNews(category: NewsCategory): Promise<NewsItem[]> {
 	try {
 		const query = encodeURIComponent(CATEGORY_QUERIES[category]);
 		const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
+		const workerUrl = `${WORKER_URL}/?url=${encodeURIComponent(rssUrl)}&format=json`;
 
-		// Use CORS proxy
-		const proxyUrl = CORS_PROXY_URL + encodeURIComponent(rssUrl);
-		logger.log('News API', `Fetching ${category} from Google News RSS`);
+		logger.log('News API', `Fetching ${category} from Worker`);
 
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+		const timeoutId = setTimeout(() => controller.abort(), 15000);
 
 		try {
-			const response = await fetch(proxyUrl, { 
-				signal: controller.signal,
-				headers: {
-					'Accept': 'application/xml, text/xml, */*'
-				}
-			});
+			const response = await fetch(workerUrl, { signal: controller.signal });
 			clearTimeout(timeoutId);
 
 			if (!response.ok) {
-				logger.error('News API', `HTTP ${response.status} for ${category}: ${response.statusText}`);
+				logger.error('News API', `HTTP ${response.status} for ${category}`);
 				return [];
 			}
 
-			const xml = await response.text();
+			const data = await response.json();
 			
-			// Check if we got XML (not an error page)
-			if (!xml.includes('<rss') && !xml.includes('<item>')) {
-				logger.warn('News API', `Invalid RSS response for ${category}`);
-				console.log('Response preview:', xml.substring(0, 200));
+			if (data.status !== 'ok' || !data.items || !Array.isArray(data.items)) {
+				logger.warn('News API', `Invalid response for ${category}`);
 				return [];
 			}
 
-			const articles = parseRSS(xml, category)
+			const articles = data.items.slice(0, 20).map((item: any, index: number) => {
+				const title = (item.title || '').trim();
+				const source = (item.source || 'Google News').trim();
+				const link = item.link || '';
+				const pubDate = item.pubDate || '';
+				const alert = containsAlertKeyword(title);
+
+				return {
+					id: `gnews-${category}-${hashCode(link)}-${index}`,
+					title: decodeHTMLEntities(title),
+					link,
+					pubDate,
+					timestamp: pubDate ? new Date(pubDate).getTime() : Date.now(),
+					source: decodeHTMLEntities(source),
+					category,
+					isAlert: !!alert,
+					alertKeyword: alert?.keyword || undefined,
+					region: detectRegion(title) ?? undefined,
+					topics: detectTopics(title),
+					relevanceScore: calculateRelevanceScore(title, source, pubDate)
+				};
+			});
+
+			const sorted = articles
 				.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
 				.slice(0, 15);
 
-			logger.log('News API', `Successfully fetched ${articles.length} ${category} articles`);
-			return articles;
+			logger.log('News API', `Fetched ${sorted.length} ${category} articles`);
+			return sorted;
 		} catch (fetchError) {
 			clearTimeout(timeoutId);
 			if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-				logger.error('News API', `Request timeout for ${category}`);
+				logger.error('News API', `Timeout for ${category}`);
 			} else {
 				logger.error('News API', `Fetch error for ${category}:`, fetchError);
 			}
 			return [];
 		}
 	} catch (error) {
-		logger.error('News API', `Unexpected error fetching ${category}:`, error);
+		logger.error('News API', `Error fetching ${category}:`, error);
 		return [];
 	}
 }

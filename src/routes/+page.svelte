@@ -281,68 +281,50 @@
 
 	<main class="main-content" class:compact={compactMode}>
 		<Dashboard {editMode} {compactMode}>
-			<!-- Map Panel - Full width -->
-			{#if isPanelVisible('map')}
-				<div class="panel-slot map-slot" data-panel-id="map" draggable={editMode}>
-					<MapPanel monitors={$monitors.monitors} />
-				</div>
-			{/if}
+			<!-- Panels rendered in order specified by settings.order -->
+			{#each $settings.order as panelId (panelId)}
+				{#if isPanelVisible(panelId)}
+					{#if panelId === 'map'}
+						<div class="panel-slot map-slot" data-panel-id="map" draggable={editMode}>
+							<MapPanel monitors={$monitors.monitors} />
+						</div>
+					{:else if panelId === 'politics'}
+						<div class="panel-slot" data-panel-id="politics" draggable={editMode}>
+							<NewsPanel category="politics" panelId="politics" title="Politics" />
+						</div>
+					{:else if panelId === 'tech'}
+						<div class="panel-slot" data-panel-id="tech" draggable={editMode}>
+							<NewsPanel category="tech" panelId="tech" title="Tech" />
+						</div>
+					{:else if panelId === 'finance'}
+						<div class="panel-slot" data-panel-id="finance" draggable={editMode}>
+							<NewsPanel category="finance" panelId="finance" title="Finance" />
+						</div>
+					{:else if panelId === 'gov'}
+						<div class="panel-slot" data-panel-id="gov" draggable={editMode}>
+							<NewsPanel category="gov" panelId="gov" title="Government" />
+						</div>
+					{:else if panelId === 'ai'}
+						<div class="panel-slot" data-panel-id="ai" draggable={editMode}>
+							<NewsPanel category="ai" panelId="ai" title="AI" />
+						</div>
 
-			<!-- News Panels -->
-			{#if isPanelVisible('politics')}
-				<div class="panel-slot" data-panel-id="politics" draggable={editMode}>
-					<NewsPanel category="politics" panelId="politics" title="Politics" />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('tech')}
-				<div class="panel-slot" data-panel-id="tech" draggable={editMode}>
-					<NewsPanel category="tech" panelId="tech" title="Tech" />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('finance')}
-				<div class="panel-slot" data-panel-id="finance" draggable={editMode}>
-					<NewsPanel category="finance" panelId="finance" title="Finance" />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('gov')}
-				<div class="panel-slot" data-panel-id="gov" draggable={editMode}>
-					<NewsPanel category="gov" panelId="gov" title="Government" />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('ai')}
-				<div class="panel-slot" data-panel-id="ai" draggable={editMode}>
-					<NewsPanel category="ai" panelId="ai" title="AI" />
-				</div>
-			{/if}
-
-			<!-- Markets Panels -->
-			{#if isPanelVisible('markets')}
-				<div class="panel-slot" data-panel-id="markets" draggable={editMode}>
-					<MarketsPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('heatmap')}
-				<div class="panel-slot" data-panel-id="heatmap" draggable={editMode}>
-					<HeatmapPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('commodities')}
-				<div class="panel-slot" data-panel-id="commodities" draggable={editMode}>
-					<CommoditiesPanel />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('crypto')}
-				<div class="panel-slot" data-panel-id="crypto" draggable={editMode}>
-					<CryptoPanel />
-				</div>
-			{/if}
+					{:else if panelId === 'markets'}
+						<div class="panel-slot" data-panel-id="markets" draggable={editMode}>
+							<MarketsPanel />
+						</div>
+					{:else if panelId === 'heatmap'}
+						<div class="panel-slot" data-panel-id="heatmap" draggable={editMode}>
+							<HeatmapPanel />
+						</div>
+					{:else if panelId === 'commodities'}
+						<div class="panel-slot" data-panel-id="commodities" draggable={editMode}>
+							<CommoditiesPanel />
+						</div>
+					{:else if panelId === 'crypto'}
+						<div class="panel-slot" data-panel-id="crypto" draggable={editMode}>
+							<CryptoPanel />
+						</div>
 
 			<!-- Analysis Panels -->
 			{#if isPanelVisible('mainchar')}
