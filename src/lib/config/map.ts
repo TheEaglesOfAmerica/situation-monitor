@@ -75,6 +75,13 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Washington DC — US political center, White House, Pentagon, Capitol'
 	},
 	{
+		name: 'Seattle',
+		lat: 47.61,
+		lon: -122.33,
+		level: 'low',
+		desc: 'Seattle — Pacific Northwest port, cloud infra, naval & aerospace hub'
+	},
+	{
 		name: 'Moscow',
 		lat: 55.75,
 		lon: 37.6,

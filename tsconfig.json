@@ -1,5 +1,4 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
 	"compilerOptions": {
 		"strict": true,
 		"noImplicitAny": true,
@@ -12,6 +11,8 @@
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"allowJs": true,
 		"checkJs": true,
-		"skipLibCheck": true
-	}
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"exclude": ["static", "node_modules", ".svelte-kit"]
 }

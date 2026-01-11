@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Panel } from '$lib/components/common';
 	import {
 		HOTSPOTS,
@@ -15,6 +15,7 @@
 	} from '$lib/config/map';
 	import { CACHE_TTLS } from '$lib/config/api';
 	import type { CustomMonitor } from '$lib/types';
+	import type { Hotspot } from '$lib/config/map';
 
 	interface Props {
 		monitors?: CustomMonitor[];
@@ -39,6 +40,11 @@
 	const WIDTH = 800;
 	const HEIGHT = 400;
 
+	const WEATHER_WATCH_NAMES = ['Seattle', 'DC', 'London', 'Tokyo', 'Kyiv', 'Singapore'];
+	const WEATHER_WATCH: Hotspot[] = WEATHER_WATCH_NAMES.map((name) =>
+		HOTSPOTS.find((h) => h.name === name)
+	).filter(Boolean) as Hotspot[];
+
 	// Tooltip state
 	let tooltipContent = $state<{
 		title: string;
@@ -55,6 +61,13 @@
 	}
 	const dataCache: Record<string, CacheEntry<unknown>> = {};
 
+	// Weather overlay state
+	let weatherLayer: any = null;
+	let weatherOverlayEnabled = $state(false);
+	let weatherSnapshots = $state<Record<string, WeatherResult | null>>({});
+	let weatherUpdatedAt = $state<string | null>(null);
+	let weatherTimer: number | null = null;
+
 	function getCachedData<T>(key: string): T | null {
 		const entry = dataCache[key] as CacheEntry<T> | undefined;
 		if (!entry) return null;
@@ -68,6 +81,15 @@
 
 	function setCachedData<T>(key: string, data: T): void {
 		dataCache[key] = { data, timestamp: Date.now() };
+	}
+
+	function tempToColor(temp: number | null): string {
+		if (temp === null || Number.isNaN(temp)) return 'rgba(255,255,255,0.15)';
+		if (temp <= 32) return 'rgba(0, 136, 255, 0.35)';
+		if (temp <= 50) return 'rgba(0, 200, 255, 0.35)';
+		if (temp <= 68) return 'rgba(0, 220, 170, 0.35)';
+		if (temp <= 85) return 'rgba(255, 180, 0, 0.35)';
+		return 'rgba(255, 80, 80, 0.35)';
 	}
 
 	// Get local time at longitude
@@ -113,6 +135,73 @@
 			return result;
 		} catch {
 			return null;
+		}
+	}
+
+	async function refreshWeatherSnapshots(): Promise<void> {
+		try {
+			const entries = await Promise.all(
+				WEATHER_WATCH.map(async (point) => {
+					const reading = await getWeather(point.lat, point.lon);
+					return [point.name, reading] as const;
+				})
+			);
+			weatherSnapshots = Object.fromEntries(entries);
+			weatherUpdatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			if (weatherOverlayEnabled) {
+				renderWeatherOverlay();
+			}
+		} catch (err) {
+			console.error('Failed to refresh weather snapshots', err);
+		}
+	}
+
+	function renderWeatherOverlay(): void {
+		if (!weatherLayer || !projection) return;
+		weatherLayer.selectAll('*').remove();
+		if (!weatherOverlayEnabled) return;
+
+		WEATHER_WATCH.forEach((point) => {
+			const [x, y] = projection([point.lon, point.lat]) || [0, 0];
+			if (!x || !y) return;
+			const weather = weatherSnapshots[point.name];
+			const ringColor = tempToColor(weather?.temp ?? null);
+
+			weatherLayer
+				.append('circle')
+				.attr('cx', x)
+				.attr('cy', y)
+				.attr('r', 16)
+				.attr('fill', ringColor)
+				.attr('stroke', 'rgba(255,255,255,0.1)')
+				.attr('stroke-width', 1.5);
+			weatherLayer
+				.append('text')
+				.attr('x', x + 10)
+				.attr('y', y - 8)
+				.attr('fill', '#cde7ff')
+				.attr('font-size', '8px')
+				.attr('font-family', 'monospace')
+				.text(point.name);
+			if (weather?.condition) {
+				weatherLayer
+					.append('text')
+					.attr('x', x + 10)
+					.attr('y', y + 4)
+					.attr('fill', '#9ad1ff')
+					.attr('font-size', '7px')
+					.attr('font-family', 'monospace')
+					.text(`${weather.condition} ${weather.temp ?? '—'}°`);
+			}
+		});
+	}
+
+	function toggleWeatherOverlay(): void {
+		weatherOverlayEnabled = !weatherOverlayEnabled;
+		if (weatherOverlayEnabled) {
+			renderWeatherOverlay();
+		} else if (weatherLayer) {
+			weatherLayer.selectAll('*').remove();
 		}
 	}
 
@@ -222,6 +311,7 @@
 		svg.attr('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
 
 		mapGroup = svg.append('g').attr('id', 'mapGroup');
+		weatherLayer = mapGroup.append('g').attr('id', 'weatherLayer');
 
 		// Setup zoom - disable scroll wheel, allow touch pinch and buttons
 		zoom = d3
@@ -485,6 +575,14 @@
 
 			// Draw custom monitors with locations
 			drawMonitors();
+
+			// Keep weather overlay layer on top and render if enabled
+			if (weatherLayer) {
+				weatherLayer.raise();
+				if (weatherOverlayEnabled) {
+					renderWeatherOverlay();
+				}
+			}
 		} catch (err) {
 			console.error('Failed to load map data:', err);
 		}
@@ -572,50 +670,191 @@
 
 	onMount(() => {
 		initMap();
+		refreshWeatherSnapshots();
+		weatherTimer = window.setInterval(refreshWeatherSnapshots, 5 * 60 * 1000);
+	});
+
+	onDestroy(() => {
+		if (weatherTimer) {
+			clearInterval(weatherTimer);
+		}
 	});
 </script>
 
 <Panel id="map" title="Global Situation" {loading} {error}>
-	<div class="map-container" bind:this={mapContainer}>
-		<svg class="map-svg"></svg>
-		{#if tooltipVisible && tooltipContent}
-			<div
-				class="map-tooltip"
-				style="left: {tooltipPosition.left}px; top: {tooltipPosition.top}px;"
-			>
-				<strong style="color: {tooltipContent.color}">{tooltipContent.title}</strong>
-				{#each tooltipContent.lines as line}
-					<br /><span class="tooltip-line">{line}</span>
-				{/each}
+	<div class="map-shell">
+		<div class="map-topbar">
+			<div>
+				<p class="map-eyebrow">Live situational picture</p>
+				<div class="chip-row">
+					<span class="chip">Hotspots {HOTSPOTS.length}</span>
+					<span class="chip">Conflict zones {CONFLICT_ZONES.length}</span>
+					<span class="chip">Chokepoints {CHOKEPOINTS.length}</span>
+					<span class="chip weather {weatherOverlayEnabled ? 'active' : ''}">
+						Weather {weatherOverlayEnabled ? 'on' : 'off'}
+					</span>
+				</div>
 			</div>
-		{/if}
-		<div class="zoom-controls">
-			<button class="zoom-btn" onclick={zoomIn} title="Zoom in">+</button>
-			<button class="zoom-btn" onclick={zoomOut} title="Zoom out">−</button>
-			<button class="zoom-btn" onclick={resetZoom} title="Reset">⟲</button>
+			<div class="topbar-actions">
+				<button class="pill-btn" class:active={weatherOverlayEnabled} onclick={toggleWeatherOverlay}>
+					Live weather layer
+				</button>
+				<button class="pill-btn" onclick={resetZoom}>Reset view</button>
+			</div>
 		</div>
-		<div class="map-legend">
-			<div class="legend-item">
-				<span class="legend-dot high"></span> High
+
+		<div class="map-body" bind:this={mapContainer}>
+			<svg class="map-svg"></svg>
+			{#if tooltipVisible && tooltipContent}
+				<div
+					class="map-tooltip"
+					style="left: {tooltipPosition.left}px; top: {tooltipPosition.top}px;"
+				>
+					<strong style="color: {tooltipContent.color}">{tooltipContent.title}</strong>
+					{#each tooltipContent.lines as line}
+						<br /><span class="tooltip-line">{line}</span>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="map-legend">
+				<div class="legend-item">
+					<span class="legend-dot high"></span> High
+				</div>
+				<div class="legend-item">
+					<span class="legend-dot elevated"></span> Elevated
+				</div>
+				<div class="legend-item">
+					<span class="legend-dot low"></span> Low
+				</div>
+				<div class="legend-item">
+					<span class="legend-dot weather-ring"></span> Weather ring (temp)
+				</div>
+				<div class="legend-note">Hover anywhere to see local time and weather.</div>
 			</div>
-			<div class="legend-item">
-				<span class="legend-dot elevated"></span> Elevated
+
+			<div class="weather-tracker">
+				<div class="weather-header">
+					<div>
+						<div class="weather-title">Live weather tracker</div>
+						<div class="weather-sub">Follows key hubs and auto-updates</div>
+					</div>
+					<span class="weather-timestamp">
+						{weatherUpdatedAt ? `Updated ${weatherUpdatedAt}` : 'Syncing...'}
+					</span>
+				</div>
+				<div class="weather-grid">
+					{#each WEATHER_WATCH as loc}
+						<div class="weather-card">
+							<div class="weather-city">{loc.name}</div>
+							<div class="weather-metric">
+								{weatherSnapshots[loc.name]?.temp ?? '—'}°F
+							</div>
+							<div class="weather-meta">
+								{weatherSnapshots[loc.name]?.condition ?? 'Fetching...'}
+								{#if weatherSnapshots[loc.name]?.wind}
+									• {weatherSnapshots[loc.name]?.wind} mph
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
-			<div class="legend-item">
-				<span class="legend-dot low"></span> Low
+
+			<div class="zoom-controls">
+				<button class="zoom-btn" onclick={zoomIn} title="Zoom in">+</button>
+				<button class="zoom-btn" onclick={zoomOut} title="Zoom out">−</button>
 			</div>
 		</div>
 	</div>
 </Panel>
 
 <style>
-	.map-container {
+	.map-shell {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		background: linear-gradient(145deg, #0b1310, #0c1a16);
+		border: 1px solid #132420;
+		border-radius: 6px;
+		padding: 0.5rem;
+	}
+
+	.map-topbar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.map-eyebrow {
+		margin: 0 0 0.25rem 0;
+		color: #7ac4ad;
+		font-size: 0.65rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.chip-row {
+		display: flex;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+	}
+
+	.chip {
+		background: rgba(122, 196, 173, 0.1);
+		border: 1px solid rgba(122, 196, 173, 0.4);
+		color: #ccefe0;
+		padding: 0.2rem 0.5rem;
+		border-radius: 999px;
+		font-size: 0.65rem;
+		line-height: 1;
+	}
+
+	.chip.weather.active {
+		background: rgba(0, 180, 255, 0.1);
+		border-color: rgba(0, 180, 255, 0.6);
+		color: #bde9ff;
+	}
+
+	.topbar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+	}
+
+	.pill-btn {
+		background: rgba(18, 46, 40, 0.8);
+		border: 1px solid #1f3c34;
+		color: #dff4eb;
+		padding: 0.35rem 0.7rem;
+		border-radius: 999px;
+		font-size: 0.7rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.pill-btn:hover,
+	.pill-btn.active {
+		background: linear-gradient(135deg, #1c6f59, #158d7a);
+		border-color: #46bea7;
+		color: #f3fffb;
+		box-shadow: 0 0 0 1px rgba(70, 190, 167, 0.3);
+	}
+
+	.map-body {
 		position: relative;
 		width: 100%;
 		aspect-ratio: 2 / 1;
-		background: #0a0f0d;
-		border-radius: 4px;
+		background: radial-gradient(circle at 30% 20%, rgba(19, 60, 50, 0.35), transparent 40%),
+			radial-gradient(circle at 70% 70%, rgba(30, 90, 80, 0.25), transparent 45%),
+			#0a0f0d;
+		border: 1px solid #15322c;
+		border-radius: 6px;
 		overflow: hidden;
+		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 	}
 
 	.map-svg {
@@ -625,72 +864,84 @@
 
 	.map-tooltip {
 		position: absolute;
-		background: rgba(10, 10, 10, 0.95);
-		border: 1px solid #333;
-		border-radius: 4px;
-		padding: 0.5rem;
-		font-size: 0.65rem;
-		color: #ddd;
-		max-width: 250px;
+		background: rgba(6, 10, 9, 0.96);
+		border: 1px solid #2c4f45;
+		border-radius: 6px;
+		padding: 0.55rem;
+		font-size: 0.68rem;
+		color: #e8f7f0;
+		max-width: 260px;
 		pointer-events: none;
 		z-index: 100;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 	}
 
 	.tooltip-line {
-		opacity: 0.7;
+		opacity: 0.8;
 	}
 
 	.zoom-controls {
 		position: absolute;
-		bottom: 0.5rem;
-		right: 0.5rem;
+		top: 0.75rem;
+		left: 0.75rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
+		z-index: 10;
 	}
 
 	.zoom-btn {
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 2.6rem;
+		height: 2.6rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(20, 20, 20, 0.9);
-		border: 1px solid #333;
-		border-radius: 4px;
-		color: #aaa;
+		background: rgba(18, 30, 26, 0.9);
+		border: 1px solid #1f3c34;
+		border-radius: 8px;
+		color: #dff4eb;
 		font-size: 1rem;
 		cursor: pointer;
+		transition: all 0.2s ease;
 	}
 
 	.zoom-btn:hover {
-		background: rgba(40, 40, 40, 0.9);
+		background: rgba(33, 70, 60, 0.95);
 		color: #fff;
+		box-shadow: 0 0 0 1px rgba(70, 190, 167, 0.3);
 	}
 
 	.map-legend {
 		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
+		top: 0.75rem;
+		right: 0.75rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.2rem;
-		background: rgba(10, 10, 10, 0.8);
-		padding: 0.3rem 0.5rem;
-		border-radius: 4px;
-		font-size: 0.55rem;
+		gap: 0.25rem;
+		background: rgba(10, 14, 12, 0.85);
+		padding: 0.4rem 0.6rem;
+		border-radius: 6px;
+		font-size: 0.6rem;
+		border: 1px solid #1f3c34;
+		backdrop-filter: blur(6px);
 	}
 
 	.legend-item {
 		display: flex;
 		align-items: center;
-		gap: 0.3rem;
-		color: #888;
+		gap: 0.35rem;
+		color: #b8c4bf;
+	}
+
+	.legend-note {
+		color: #7aa69a;
+		opacity: 0.85;
+		margin-top: 0.1rem;
 	}
 
 	.legend-dot {
-		width: 8px;
-		height: 8px;
+		width: 9px;
+		height: 9px;
 		border-radius: 50%;
 	}
 
@@ -704,6 +955,84 @@
 
 	.legend-dot.low {
 		background: #00ff88;
+	}
+
+	.legend-dot.weather-ring {
+		background: linear-gradient(135deg, #00c8ff, #ffb400, #ff5050);
+	}
+
+	.weather-tracker {
+		position: absolute;
+		bottom: 0.75rem;
+		left: 0.75rem;
+		right: 0.75rem;
+		background: rgba(8, 12, 10, 0.9);
+		border: 1px solid #12372f;
+		border-radius: 6px;
+		padding: 0.55rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		backdrop-filter: blur(8px);
+		box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+		z-index: 5;
+	}
+
+	.weather-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.weather-title {
+		font-size: 0.78rem;
+		color: #eaf7f0;
+		margin: 0;
+	}
+
+	.weather-sub {
+		font-size: 0.62rem;
+		color: #8bb5a7;
+		margin: 0;
+	}
+
+	.weather-timestamp {
+		font-size: 0.62rem;
+		color: #7ac4ad;
+	}
+
+	.weather-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+		gap: 0.4rem;
+	}
+
+	.weather-card {
+		background: rgba(20, 30, 26, 0.8);
+		border: 1px solid #1f3c34;
+		border-radius: 4px;
+		padding: 0.4rem;
+		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+	}
+
+	.weather-city {
+		font-size: 0.7rem;
+		color: #8ad1bd;
+		margin-bottom: 0.1rem;
+	}
+
+	.weather-metric {
+		font-size: 1rem;
+		font-weight: 600;
+		color: #eaf7ff;
+		line-height: 1.1;
+	}
+
+	.weather-meta {
+		font-size: 0.65rem;
+		color: #9fb6ad;
 	}
 
 	/* Pulse animation for hotspots */
@@ -727,10 +1056,27 @@
 		cursor: pointer;
 	}
 
-	/* Hide zoom controls on mobile where touch zoom is available */
-	@media (max-width: 768px) {
+	@media (max-width: 900px) {
+		.map-body {
+			aspect-ratio: 16 / 10;
+		}
+
+		.weather-tracker {
+			position: relative;
+			bottom: auto;
+			left: auto;
+			right: auto;
+			margin: 0.5rem;
+		}
+
 		.zoom-controls {
-			display: flex;
+			top: 0.5rem;
+			left: 0.5rem;
+		}
+
+		.map-legend {
+			top: auto;
+			bottom: 0.5rem;
 		}
 	}
 </style>
