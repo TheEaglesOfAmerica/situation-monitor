@@ -529,8 +529,8 @@
 		svg.attr('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
 
 		mapGroup = svg.append('g').attr('id', 'mapGroup');
-		hotspotsLayer = mapGroup.append('g').attr('id', 'hotspotsLayer');
-		weatherLayer = mapGroup.append('g').attr('id', 'weatherLayer');
+		// Note: hotspotsLayer and weatherLayer are created AFTER drawing countries
+		// to ensure they render on top of the land
 
 		// Setup zoom - allow cmd/ctrl+scroll on desktop, touch pinch on mobile
 		zoom = d3
@@ -754,18 +754,19 @@
 				}
 			});
 
+			// Create overlay layers AFTER all static elements so they render on top
+			hotspotsLayer = mapGroup.append('g').attr('id', 'hotspotsLayer');
+			weatherLayer = mapGroup.append('g').attr('id', 'weatherLayer');
+
 			// Draw hotspots
 			drawHotspots();
 
 			// Draw custom monitors with locations
 			drawMonitors();
 
-			// Keep weather overlay layer on top and render if enabled
-			if (weatherLayer) {
-				weatherLayer.raise();
-				if (weatherOverlayEnabled) {
-					renderWeatherOverlay();
-				}
+			// Render weather overlay if enabled
+			if (weatherOverlayEnabled) {
+				renderWeatherOverlay();
 			}
 		} catch (err) {
 			console.error('Failed to load map data:', err);

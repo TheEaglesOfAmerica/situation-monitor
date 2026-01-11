@@ -153,8 +153,28 @@ function showNotification(title: string, body: string, url?: string): void {
 	setTimeout(() => notification.close(), 10000);
 }
 
-// Analyze headlines with AI to determine significance
+// Analyze headlines with AI - uses server-side API first, falls back to direct
 async function analyzeHeadlines(headlines: string[]): Promise<number[]> {
+	// Try server-side analysis first (uses server's API key)
+	try {
+		const response = await fetch('/api/ai', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ headlines }),
+			signal: AbortSignal.timeout(15000)
+		});
+		
+		if (response.ok) {
+			const data = await response.json();
+			if (data.results) {
+				return data.results.map((r: { significance: number }) => r.significance);
+			}
+		}
+	} catch {
+		// Fall back to client-side analysis
+	}
+	
+	// Client-side fallback (requires user's API key)
 	const apiKey = getApiKey();
 	
 	// Skip AI analysis if no API key configured

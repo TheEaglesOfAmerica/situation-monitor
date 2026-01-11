@@ -50,6 +50,20 @@ $types      → src/lib/types
 
 ## Key Architectural Patterns
 
+### Server-Side Architecture (NEW)
+The app now uses `@sveltejs/adapter-node` for server-side capabilities:
+
+**Server API Routes (`src/routes/api/`):**
+- `/api/news` - Server-side news aggregation from 15+ RSS sources
+- `/api/markets` - Market data with caching (crypto, commodities, indices)
+- `/api/data` - Government contracts, layoffs, predictions, whale transactions
+- `/api/ai` - AI-powered headline analysis using Mistral-8B via OpenRouter
+
+**Background Services (`src/lib/server/`):**
+- `news-store.ts` - In-memory news cache persists between requests
+- `news-scraper.ts` - Continuous RSS scraping (runs even without visitors)
+- Hooks (`src/hooks.server.ts`) - Initializes background scraping on server start
+
 ### Service Layer (`src/lib/services/`)
 All HTTP requests go through `ServiceClient` which integrates:
 - **CacheManager**: Per-service caching with TTL
@@ -96,7 +110,30 @@ Unique business logic for intelligence analysis:
 ## Environment Variables
 
 Copy `.env.example` to `.env` and configure:
-- `PUBLIC_OPENROUTER_API_KEY` - OpenRouter API key for AI-powered notifications (optional)
+
+```bash
+# Required for AI-powered headline analysis
+OPENROUTER_API_KEY=sk-or-v1-...
+
+# Optional: Configure refresh interval (default: 5 minutes)
+NEWS_REFRESH_INTERVAL=300000
+
+# Optional: Enable/disable background scraping
+ENABLE_BACKGROUND_SCRAPING=true
+```
+
+## Running the Server
+
+```bash
+npm install                    # Install dependencies
+npm run build                  # Build the application
+npm start                      # Start production server (runs on :3000)
+```
+
+For development:
+```bash
+npm run dev                    # Start dev server with hot reload
+```
 
 ## Accessibility
 
@@ -109,10 +146,32 @@ Copy `.env.example` to `.env` and configure:
 
 ## Deployment
 
-GitHub Actions workflow builds with `BASE_PATH=/situation-monitor` and deploys to GitHub Pages at `https://hipcityreg.github.io/situation-monitor/`
+The app now requires a Node.js server (not static hosting):
+
+**Local/VPS:**
+```bash
+npm run build && node build
+```
+
+**Docker:**
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY build ./build
+EXPOSE 3000
+CMD ["node", "build"]
+```
+
+**Environment Variables for Production:**
+- Set `OPENROUTER_API_KEY` for AI features
+- Set `ENABLE_BACKGROUND_SCRAPING=true` for continuous updates
 
 ## External Dependencies
 
 - **D3.js** for interactive map visualization
-- **CORS proxy** (Cloudflare Worker) for RSS feed parsing
+- **OpenRouter/Mistral-8B** for AI headline analysis
 - **CoinGecko API** for cryptocurrency data
+- **USASpending.gov API** for government contracts
+- **RSS Feeds**: Reuters, BBC, NYT, Guardian, Al Jazeera, and more
