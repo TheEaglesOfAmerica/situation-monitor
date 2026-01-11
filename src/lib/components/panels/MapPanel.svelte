@@ -90,6 +90,11 @@
 		}))
 	);
 
+	// Filter cities to show on map: major cities OR score >= 40
+	const visibleHotspots = $derived(
+		hotspotsWithScores.filter((h) => h.isMajorCity || h.emergentScore >= 40)
+	);
+
 	// Critical situations (score >= 70)
 	const criticalSituations = $derived(
 		hotspotsWithScores.filter((h) => h.emergentScore >= 70).sort((a, b) => b.emergentScore - a.emergentScore)
@@ -661,8 +666,8 @@
 				}
 			});
 
-			// Draw hotspots
-			HOTSPOTS.forEach((h) => {
+			// Draw hotspots (only major cities or 40+ score)
+			visibleHotspots.forEach((h) => {
 				const [x, y] = projection([h.lon, h.lat]) || [0, 0];
 				if (x && y) {
 					const color = THREAT_COLORS[h.level];

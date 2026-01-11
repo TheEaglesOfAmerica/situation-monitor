@@ -9,6 +9,7 @@ export interface Hotspot {
 	emergentScore?: number; // 1-100 emergent situation score
 	region?: string;
 	reasons?: string[]; // Factors contributing to the threat level
+	isMajorCity?: boolean; // Global importance - show even if score < 40
 }
 
 export interface ScoreBreakdown {
@@ -231,7 +232,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: -77.0,
 		level: 'low',
 		desc: 'Washington DC — US political center, White House, Pentagon, Capitol',
-		reasons: ['Stable democratic institutions', 'Strong security apparatus', 'Economic stability']
+		reasons: ['Stable democratic institutions', 'Strong security apparatus', 'Economic stability'],
+		isMajorCity: true
 	},
 	{
 		name: 'Seattle',
@@ -247,7 +249,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: -74.01,
 		level: 'low',
 		desc: 'New York — Global finance, UN headquarters, critical infrastructure',
-		reasons: ['Global financial center', 'UN headquarters', 'Critical infrastructure target']
+		reasons: ['Global financial center', 'UN headquarters', 'Critical infrastructure target'],
+		isMajorCity: true
 	},
 	{
 		name: 'Los Angeles',
@@ -271,7 +274,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: -99.13,
 		level: 'low',
 		desc: 'Mexico City — North American manufacturing, security and migration hub',
-		reasons: ['USMCA manufacturing', 'Migration transit hub', 'Cartel activity in region']
+		reasons: ['USMCA manufacturing', 'Migration transit hub', 'Cartel activity in region'],
+		isMajorCity: true
 	},
 	{
 		name: 'Miami',
@@ -329,7 +333,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: -0.12,
 		level: 'low',
 		desc: 'London — Financial center, Five Eyes, NATO ally',
-		reasons: ['Five Eyes intelligence', 'Global finance center', 'NATO founding member', 'Russian oligarch sanctions']
+		reasons: ['Five Eyes intelligence', 'Global finance center', 'NATO founding member', 'Russian oligarch sanctions'],
+		isMajorCity: true
 	},
 	{
 		name: 'Brussels',
@@ -337,7 +342,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 4.35,
 		level: 'low',
 		desc: 'Brussels — EU/NATO headquarters, European policy',
-		reasons: ['EU headquarters', 'NATO HQ', 'European policy center', 'High-value target']
+		reasons: ['EU headquarters', 'NATO HQ', 'European policy center', 'High-value target'],
+		isMajorCity: true
 	},
 	{
 		name: 'Paris',
@@ -345,7 +351,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 2.35,
 		level: 'low',
 		desc: 'Paris — EU power, nuclear arsenal, UN Security Council',
-		reasons: ['Nuclear arsenal', 'UN Security Council P5', 'EU leadership role', 'Terrorism target history']
+		reasons: ['Nuclear arsenal', 'UN Security Council P5', 'EU leadership role', 'Terrorism target history'],
+		isMajorCity: true
 	},
 	{
 		name: 'Berlin',
@@ -353,7 +360,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 13.41,
 		level: 'low',
 		desc: 'Berlin — EU economic engine, energy security, NATO logistics',
-		reasons: ['EU economic leader', 'Energy transition challenges', 'Ukraine support logistics', 'Historical Cold War significance']
+		reasons: ['EU economic leader', 'Energy transition challenges', 'Ukraine support logistics', 'Historical Cold War significance'],
+		isMajorCity: true
 	},
 	{
 		name: 'Kyiv',
@@ -369,7 +377,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 37.6,
 		level: 'elevated',
 		desc: 'Moscow — Kremlin, Russian military command, sanctions hub',
-		reasons: ['Directing Ukraine invasion', 'Under comprehensive sanctions', 'Nuclear arsenal control', 'Wagner Group aftermath', 'Economic isolation']
+		reasons: ['Directing Ukraine invasion', 'Under comprehensive sanctions', 'Nuclear arsenal control', 'Wagner Group aftermath', 'Economic isolation'],
+		isMajorCity: true
 	},
 	{
 		name: 'Warsaw',
@@ -524,7 +533,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 116.4,
 		level: 'elevated',
 		desc: 'Beijing — CCP headquarters, US-China tensions, tech rivalry',
-		reasons: ['US-China strategic competition', 'Tech export controls', 'Taiwan ambitions', 'South China Sea claims', 'Economic slowdown']
+		reasons: ['US-China strategic competition', 'Tech export controls', 'Taiwan ambitions', 'South China Sea claims', 'Economic slowdown'],
+		isMajorCity: true
 	},
 	{
 		name: 'Shanghai',
@@ -532,7 +542,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 121.47,
 		level: 'low',
 		desc: 'Shanghai — China trade gateway, finance, supply chain node',
-		reasons: ['Global supply chain hub', 'Financial center', 'Trade volume metrics', 'COVID policy aftermath']
+		reasons: ['Global supply chain hub', 'Financial center', 'Trade volume metrics', 'COVID policy aftermath'],
+		isMajorCity: true
 	},
 	{
 		name: 'Hong Kong',
@@ -556,7 +567,8 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: 139.76,
 		level: 'low',
 		desc: 'Tokyo — US ally, regional security, economic power',
-		reasons: ['US-Japan alliance', 'Regional security anchor', 'Defense spending increase', 'North Korea threat response']
+		reasons: ['US-Japan alliance', 'Regional security anchor', 'Defense spending increase', 'North Korea threat response'],
+		isMajorCity: true
 	},
 	{
 		name: 'Seoul',
