@@ -1,12 +1,12 @@
 /**
  * News API endpoint
- * GET /api/news - Returns all cached news
+ * GET /api/news - Returns all cached news by category
  * GET /api/news?category=politics - Returns specific category
  */
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getNewsCache, getCategoryNews, getAllNews } from '$lib/server/news-store';
+import { getNewsCache, getCategoryNews } from '$lib/server/news-store';
 import { scrapeAllNews, startBackgroundScraping } from '$lib/server/news-scraper';
 
 // Ensure background scraping is running
@@ -37,19 +37,20 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 	}
 	
-	// Return all news
+	// Return all news organized by category
 	const cache = getNewsCache();
-	const summary = Object.fromEntries(
-		Object.entries(cache).map(([cat, data]) => [cat, {
-			count: data.items.length,
-			lastUpdated: data.lastUpdated
-		}])
-	);
 	
 	return json({
-		items: getAllNews().slice(0, 100),
-		categories: summary,
-		totalItems: getAllNews().length
+		politics: cache.politics?.items || [],
+		tech: cache.tech?.items || [],
+		finance: cache.finance?.items || [],
+		gov: cache.gov?.items || [],
+		ai: cache.ai?.items || [],
+		intel: cache.intel?.items || [],
+		realtime: cache.realtime?.items || [],
+		lastUpdated: Math.max(
+			...Object.values(cache).map(c => c.lastUpdated || 0)
+		)
 	});
 };
 
