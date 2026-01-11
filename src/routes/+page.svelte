@@ -218,11 +218,6 @@
 		}
 
 		switch (e.key.toLowerCase()) {
-			case 'e':
-				// Toggle edit mode
-				e.preventDefault();
-				handleEditModeToggle();
-				break;
 			case 'r':
 				// Refresh data
 				e.preventDefault();
@@ -248,18 +243,22 @@
 				e.preventDefault();
 				handleCollapseAllToggle();
 				break;
+			case 'v':
+				// Toggle visibility dropdown
+				e.preventDefault();
+				visibilityDropdownOpen = !visibilityDropdownOpen;
+				break;
 			case 'escape':
-				// Exit modals
-				if (settingsOpen) {
+				// Exit modals and dropdowns
+				if (visibilityDropdownOpen) {
+					visibilityDropdownOpen = false;
+				} else if (settingsOpen) {
 					settingsOpen = false;
+				} else if (monitorFormOpen) {
+					monitorFormOpen = false;
 				}
 				break;
 		}
-	}
-
-	// Toggle edit mode
-	function handleEditModeToggle() {
-		editMode = !editMode;
 	}
 
 	// Toggle compact mode
@@ -286,9 +285,11 @@
 </script>
 
 <svelte:head>
-	<title>Situation Monitor</title>
-	<meta name="description" content="Real-time global situation monitoring dashboard" />
+	<title>Situation Monitor - Global Intelligence Dashboard</title>
+	<meta name="description" content="Real-time monitoring of breaking news, markets, geopolitical events, and emerging threats worldwide" />
 </svelte:head>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <div class="app">
 	<Header 
@@ -302,7 +303,7 @@
 		onVisibilityDropdownToggle={() => visibilityDropdownOpen = !visibilityDropdownOpen}
 	/>
 
-	<main class="main-content" class:compact={compactMode}>
+	<main id="main-content" class="main-content" class:compact={compactMode} role="main" aria-label="Dashboard panels">
 		<Dashboard {compactMode}>
 			<!-- Panels rendered in order specified by settings.order -->
 			{#each $settings.order as panelId (panelId)}
@@ -463,12 +464,25 @@
 
 	<!-- Panel Visibility Quick Toggle Dropdown -->
 	{#if visibilityDropdownOpen}
-		<div class="visibility-dropdown-overlay" onclick={() => visibilityDropdownOpen = false}>
-			<div class="visibility-dropdown" onclick={(e) => e.stopPropagation()}>
-				<div class="visibility-header">Quick Panel Toggles</div>
+		<div 
+			class="visibility-dropdown-overlay" 
+			onclick={() => visibilityDropdownOpen = false}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Panel visibility toggles"
+		>
+			<div class="visibility-dropdown" onclick={(e) => e.stopPropagation()} role="menu">
+				<div class="visibility-header">
+					<span>Quick Panel Toggles</span>
+					<button 
+						class="close-dropdown" 
+						onclick={() => visibilityDropdownOpen = false}
+						aria-label="Close panel toggles"
+					>×</button>
+				</div>
 				<div class="visibility-grid">
 					{#each Object.keys($settings.enabled) as panelId}
-						<label class="visibility-item">
+						<label class="visibility-item" role="menuitemcheckbox" aria-checked={$settings.enabled[panelId as keyof typeof $settings.enabled]}>
 							<input 
 								type="checkbox" 
 								checked={$settings.enabled[panelId as keyof typeof $settings.enabled]}
@@ -544,9 +558,29 @@
 	}
 
 	.visibility-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		font-weight: 700;
 		font-size: 0.9rem;
 		margin-bottom: 1rem;
+		color: var(--text-primary);
+	}
+
+	.close-dropdown {
+		background: transparent;
+		border: none;
+		color: var(--text-muted);
+		font-size: 1.25rem;
+		cursor: pointer;
+		padding: 0.25rem 0.5rem;
+		line-height: 1;
+		border-radius: 4px;
+		transition: all 0.15s ease;
+	}
+
+	.close-dropdown:hover {
+		background: var(--border);
 		color: var(--text-primary);
 	}
 
@@ -577,6 +611,30 @@
 
 	.visibility-item input[type="checkbox"] {
 		cursor: pointer;
+		accent-color: var(--accent);
+	}
+
+	/* Mobile responsiveness */
+	@media (max-width: 480px) {
+		.visibility-dropdown-overlay {
+			padding: 0.5rem;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.visibility-dropdown {
+			max-width: 100%;
+			max-height: 90vh;
+		}
+
+		.visibility-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.visibility-item {
+			font-size: 0.7rem;
+			padding: 0.4rem;
+		}
 	}
 
 	@media (max-width: 768px) {

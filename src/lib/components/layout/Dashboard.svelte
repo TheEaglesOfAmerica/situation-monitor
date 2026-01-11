@@ -9,11 +9,11 @@
 	let { children, compactMode = false }: Props = $props();
 </script>
 
-<main class="dashboard" class:compact={compactMode}>
+<div class="dashboard" class:compact={compactMode}>
 	<div class="dashboard-grid">
 		{@render children()}
 	</div>
-</main>
+</div>
 
 <style>
 	.dashboard {
@@ -34,36 +34,6 @@
 		margin-bottom: 0.25rem;
 	}
 
-	.edit-mode {
-		background: repeating-linear-gradient(
-			45deg,
-			transparent,
-			transparent 10px,
-			rgba(var(--accent-rgb), 0.03) 10px,
-			rgba(var(--accent-rgb), 0.03) 20px
-		);
-	}
-
-	.edit-banner {
-		background: var(--accent);
-		color: var(--bg);
-		padding: 0.5rem 1rem;
-		text-align: center;
-		font-size: 0.75rem;
-		font-weight: 600;
-		border-radius: 4px;
-		margin-bottom: 0.5rem;
-	}
-
-	.edit-banner kbd {
-		background: rgba(0, 0, 0, 0.2);
-		padding: 0.1rem 0.3rem;
-		border-radius: 3px;
-		font-family: monospace;
-		font-weight: 700;
-		font-size: 0.7rem;
-	}
-
 	.dashboard-grid {
 		column-count: 1;
 		column-gap: 0.5rem;
@@ -76,37 +46,9 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.dashboard-grid > :global(.dragging) {
-		opacity: 0.6;
-		transform: scale(0.95) rotate(2deg);
-		box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-		z-index: 1000;
-		cursor: grabbing !important;
-	}
-
-	.dashboard-grid > :global(.drag-over) {
-		border: 2px dashed var(--accent) !important;
-		background: rgba(var(--accent-rgb), 0.05);
-		transform: scale(1.02);
-	}
-
+	/* Panel container transitions */
 	:global([data-panel-id]) {
-		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-		will-change: transform, opacity;
-	}
-
-	.edit-mode :global([data-panel-id]) {
-		cursor: grab;
-		user-select: none;
-		-webkit-user-select: none;
-	}
-
-	.edit-mode :global([data-panel-id]:active) {
-		cursor: grabbing;
-	}
-
-	.edit-mode :global([data-panel-id]:hover) {
-		box-shadow: 0 0 0 2px var(--accent);
+		transition: opacity 0.2s ease, transform 0.2s ease;
 	}
 
 	/* Smooth panel appearance */
@@ -134,6 +76,7 @@
 	:global([data-panel-id]:nth-child(6)) { animation-delay: 0.3s; }
 	:global([data-panel-id]:nth-child(n+7)) { animation-delay: 0.35s; }
 
+	/* Responsive column layout */
 	@media (min-width: 600px) {
 		.dashboard-grid {
 			column-count: 2;

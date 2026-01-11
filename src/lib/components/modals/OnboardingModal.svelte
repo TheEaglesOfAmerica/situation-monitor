@@ -28,21 +28,25 @@
 </script>
 
 {#if open}
-	<div class="modal-overlay">
+	<div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
 		<div class="modal onboarding-modal">
 			<div class="modal-header">
 				<button class="close-btn" onclick={handleClose} aria-label="Skip onboarding">
 					&times;
 				</button>
-				<h2>Welcome to Situation Monitor</h2>
+				<h2 id="onboarding-title">Welcome to Situation Monitor</h2>
 				<p class="subtitle">Choose a dashboard configuration to get started</p>
 			</div>
 
-			<div class="preset-grid">
+			<div class="preset-grid" role="group" aria-label="Dashboard presets">
 				{#each PRESET_ORDER as presetId}
 					{@const preset = PRESETS[presetId]}
-					<button class="preset-card" onclick={() => handleSelectPreset(presetId)}>
-						<div class="preset-icon">{preset.icon}</div>
+					<button 
+						class="preset-card" 
+						onclick={() => handleSelectPreset(presetId)}
+						aria-label="{preset.name} - {preset.description}. {preset.panels.length} panels"
+					>
+						<div class="preset-icon" aria-hidden="true">{preset.icon}</div>
 						<div class="preset-name">{preset.name}</div>
 						<div class="preset-description">{preset.description}</div>
 						<div class="preset-panel-count">{preset.panels.length} panels</div>

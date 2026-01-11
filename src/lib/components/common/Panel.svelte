@@ -10,7 +10,6 @@
 		statusClass?: string;
 		loading?: boolean;
 		error?: string | null;
-		draggable?: boolean;
 		collapsible?: boolean;
 		collapsed?: boolean;
 		onCollapse?: () => void;
@@ -27,7 +26,6 @@
 		statusClass = '',
 		loading = false,
 		error = null,
-		draggable = true,
 		collapsible = false,
 		collapsed = false,
 		onCollapse,
@@ -43,10 +41,10 @@
 	}
 </script>
 
-<div class="panel" class:draggable class:collapsed data-panel-id={id}>
-	<div class="panel-header">
+<article class="panel" class:collapsed data-panel-id={id} aria-labelledby="panel-title-{id}">
+	<header class="panel-header">
 		<div class="panel-title-row">
-			<h3 class="panel-title">{title}</h3>
+			<h3 id="panel-title-{id}" class="panel-title">{title}</h3>
 			{#if count !== null}
 				<span class="panel-count">{count}</span>
 			{/if}
@@ -67,23 +65,28 @@
 				{@render actions()}
 			{/if}
 			{#if collapsible}
-				<button class="panel-collapse-btn" onclick={handleCollapse} aria-label="Toggle panel">
+				<button 
+					class="panel-collapse-btn" 
+					onclick={handleCollapse} 
+					aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+					aria-expanded={!collapsed}
+				>
 					{collapsed ? '▼' : '▲'}
 				</button>
 			{/if}
 		</div>
-	</div>
+	</header>
 
-	<div class="panel-content" class:hidden={collapsed}>
+	<div class="panel-content" class:hidden={collapsed} role="region" aria-labelledby="panel-title-{id}">
 		{#if error}
-			<div class="error-msg">{error}</div>
+			<div class="error-msg" role="alert">{error}</div>
 		{:else if loading}
-			<div class="loading-msg">Loading...</div>
+			<div class="loading-msg" aria-live="polite">Loading...</div>
 		{:else}
 			{@render children()}
 		{/if}
 	</div>
-</div>
+</article>
 
 <style>
 	.panel {
@@ -93,14 +96,6 @@
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
-	}
-
-	.panel.draggable {
-		cursor: grab;
-	}
-
-	.panel.draggable:active {
-		cursor: grabbing;
 	}
 
 	.panel-header {

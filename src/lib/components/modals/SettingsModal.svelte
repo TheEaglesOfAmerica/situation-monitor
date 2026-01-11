@@ -37,6 +37,19 @@
 		</section>
 
 		<section class="settings-section">
+			<h3 class="section-title">Keyboard Shortcuts</h3>
+			<div class="shortcuts-grid">
+				<div class="shortcut"><kbd>R</kbd> <span>Refresh data</span></div>
+				<div class="shortcut"><kbd>S</kbd> <span>Open settings</span></div>
+				<div class="shortcut"><kbd>N</kbd> <span>Toggle notifications</span></div>
+				<div class="shortcut"><kbd>C</kbd> <span>Compact mode</span></div>
+				<div class="shortcut"><kbd>V</kbd> <span>Panel visibility</span></div>
+				<div class="shortcut"><kbd>X</kbd> <span>Collapse all</span></div>
+				<div class="shortcut"><kbd>Esc</kbd> <span>Close modal</span></div>
+			</div>
+		</section>
+
+		<section class="settings-section">
 			<h3 class="section-title">Enabled Panels</h3>
 			<p class="section-desc">Toggle panels on/off to customize your dashboard</p>
 
@@ -94,6 +107,32 @@
 		font-size: 0.65rem;
 		color: var(--text-muted);
 		margin: 0;
+	}
+
+	.shortcuts-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.4rem;
+	}
+
+	.shortcut {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.65rem;
+		color: var(--text-secondary);
+	}
+
+	.shortcut kbd {
+		display: inline-block;
+		padding: 0.15rem 0.35rem;
+		font-family: monospace;
+		font-size: 0.6rem;
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid var(--border);
+		border-radius: 3px;
+		min-width: 1.5rem;
+		text-align: center;
 	}
 
 	.setting-row {

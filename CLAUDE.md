@@ -81,6 +81,32 @@ Unique business logic for intelligence analysis:
 **Unit tests**: Located alongside source as `*.test.ts` or `*.spec.ts`
 **E2E tests**: In `tests/e2e/*.spec.ts`, run against preview server
 
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `R` | Refresh all data |
+| `S` | Open settings modal |
+| `N` | Toggle AI notifications |
+| `C` | Toggle compact mode |
+| `V` | Toggle panel visibility dropdown |
+| `X` | Collapse/expand all panels |
+| `Esc` | Close modals and dropdowns |
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+- `PUBLIC_OPENROUTER_API_KEY` - OpenRouter API key for AI-powered notifications (optional)
+
+## Accessibility
+
+- Skip to main content link
+- ARIA labels and roles throughout
+- Focus trapping in modals
+- Keyboard navigation support
+- Reduced motion support (`prefers-reduced-motion`)
+- High contrast mode support (`prefers-contrast: high`)
+
 ## Deployment
 
 GitHub Actions workflow builds with `BASE_PATH=/situation-monitor` and deploys to GitHub Pages at `https://hipcityreg.github.io/situation-monitor/`

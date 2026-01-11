@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		open: boolean;
@@ -12,6 +13,9 @@
 
 	let { open = false, title, onClose, header, footer, children }: Props = $props();
 
+	let modalElement: HTMLDivElement;
+	let previouslyFocused: HTMLElement | null = null;
+
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
 			onClose();
@@ -19,10 +23,43 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		if (!open) return;
+
 		if (e.key === 'Escape') {
 			onClose();
+			return;
+		}
+
+		// Focus trap
+		if (e.key === 'Tab' && modalElement) {
+			const focusables = modalElement.querySelectorAll<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			);
+			const firstFocusable = focusables[0];
+			const lastFocusable = focusables[focusables.length - 1];
+
+			if (e.shiftKey && document.activeElement === firstFocusable) {
+				e.preventDefault();
+				lastFocusable?.focus();
+			} else if (!e.shiftKey && document.activeElement === lastFocusable) {
+				e.preventDefault();
+				firstFocusable?.focus();
+			}
 		}
 	}
+
+	// Focus management
+	$effect(() => {
+		if (open && modalElement) {
+			previouslyFocused = document.activeElement as HTMLElement;
+			// Focus the close button when modal opens
+			const closeBtn = modalElement.querySelector<HTMLElement>('.modal-close');
+			closeBtn?.focus();
+		} else if (!open && previouslyFocused) {
+			previouslyFocused.focus();
+			previouslyFocused = null;
+		}
+	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -31,7 +68,13 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="modal-backdrop" onclick={handleBackdropClick}>
-		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+		<div 
+			bind:this={modalElement}
+			class="modal" 
+			role="dialog" 
+			aria-modal="true" 
+			aria-labelledby="modal-title"
+		>
 			<div class="modal-header">
 				<h2 id="modal-title" class="modal-title">{title}</h2>
 				{#if header}

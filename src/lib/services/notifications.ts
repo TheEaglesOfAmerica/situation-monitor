@@ -3,6 +3,7 @@
  * Uses Mistral 8B via OpenRouter to analyze headlines for significance
  */
 
+import { PUBLIC_OPENROUTER_API_KEY } from '$env/static/public';
 import type { NewsItem } from '$lib/types';
 
 // Check if we're in a browser environment
@@ -10,7 +11,7 @@ const browser = typeof window !== 'undefined';
 
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = PUBLIC_OPENROUTER_API_KEY || '';
 const MODEL = 'mistralai/ministral-8b';
 
 // Storage keys
@@ -136,6 +137,11 @@ function showNotification(title: string, body: string, url?: string): void {
 
 // Analyze headlines with AI to determine significance
 async function analyzeHeadlines(headlines: string[]): Promise<number[]> {
+	// Skip AI analysis if no API key configured
+	if (!OPENROUTER_API_KEY) {
+		return headlines.map(() => 5); // Default to moderate significance
+	}
+	
 	try {
 		const response = await fetch(OPENROUTER_API_URL, {
 			method: 'POST',

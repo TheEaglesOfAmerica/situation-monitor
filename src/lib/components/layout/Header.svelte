@@ -100,12 +100,12 @@
 	);
 </script>
 
-<header class="header" class:compact={compactMode}>
+<header class="header" class:compact={compactMode} role="banner">
 	<div class="header-left">
 		<h1 class="logo">SITUATION MONITOR</h1>
 	</div>
 
-	<div class="header-center">
+	<div class="header-center" aria-live="polite" aria-atomic="true">
 		<div class="refresh-status">
 			{#if $isRefreshing}
 				<span class="status-text loading">Refreshing...</span>
@@ -118,15 +118,17 @@
 		</div>
 	</div>
 
-	<div class="header-right">
+	<nav class="header-right" role="toolbar" aria-label="Dashboard controls">
 		<!-- Collapse All Toggle -->
 		<button
 			class="header-btn"
 			class:active={allPanelsCollapsed}
 			onclick={onCollapseAllToggle}
-			title={allPanelsCollapsed ? 'Expand all panels' : 'Collapse all panels'}
+			title="{allPanelsCollapsed ? 'Expand all panels' : 'Collapse all panels'} (X)"
+			aria-pressed={allPanelsCollapsed}
+			aria-label="{allPanelsCollapsed ? 'Expand' : 'Collapse'} all panels"
 		>
-			<span class="btn-icon">{allPanelsCollapsed ? '▼' : '▲'}</span>
+			<span class="btn-icon" aria-hidden="true">{allPanelsCollapsed ? '▼' : '▲'}</span>
 			<span class="btn-label">{allPanelsCollapsed ? 'Expand' : 'Collapse'}</span>
 		</button>
 
@@ -135,9 +137,11 @@
 			class="header-btn"
 			class:active={visibilityDropdownOpen}
 			onclick={onVisibilityDropdownToggle}
-			title="Toggle panel visibility"
+			title="Toggle panel visibility (V)"
+			aria-expanded={visibilityDropdownOpen}
+			aria-label="Toggle panel visibility menu"
 		>
-			<span class="btn-icon">👁</span>
+			<span class="btn-icon" aria-hidden="true">👁</span>
 			<span class="btn-label">Panels</span>
 		</button>
 
@@ -146,9 +150,11 @@
 			class="header-btn"
 			class:active={compactMode}
 			onclick={onCompactModeToggle}
-			title={compactMode ? 'Normal view' : 'Compact view'}
+			title="{compactMode ? 'Normal view' : 'Compact view'} (C)"
+			aria-pressed={compactMode}
+			aria-label="{compactMode ? 'Switch to normal view' : 'Switch to compact view'}"
 		>
-			<span class="btn-icon">{compactMode ? '⊞' : '⊟'}</span>
+			<span class="btn-icon" aria-hidden="true">{compactMode ? '⊞' : '⊟'}</span>
 			<span class="btn-label">{compactMode ? 'Normal' : 'Compact'}</span>
 		</button>
 
@@ -157,9 +163,11 @@
 			class="header-btn"
 			class:active={notificationsOn}
 			onclick={handleToggleNotifications}
-			title={notificationsOn ? 'AI Notifications ON' : 'AI Notifications OFF'}
+			title="{notificationsOn ? 'AI Notifications ON' : 'AI Notifications OFF'} (N)"
+			aria-pressed={notificationsOn}
+			aria-label="{notificationsOn ? 'Disable' : 'Enable'} AI notifications"
 		>
-			<span class="btn-icon">{notificationsOn ? '🔔' : '🔕'}</span>
+			<span class="btn-icon" aria-hidden="true">{notificationsOn ? '🔔' : '🔕'}</span>
 			<span class="btn-label">{notificationsOn ? 'Alerts' : 'Alerts'}</span>
 		</button>
 
@@ -167,9 +175,11 @@
 			class="header-btn"
 			class:active={$autoRefreshEnabled}
 			onclick={handleToggleAutoRefresh}
-			title={$autoRefreshEnabled ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
+			title="{$autoRefreshEnabled ? 'Auto-refresh ON' : 'Auto-refresh OFF'}"
+			aria-pressed={$autoRefreshEnabled}
+			aria-label="{$autoRefreshEnabled ? 'Disable' : 'Enable'} auto refresh"
 		>
-			<span class="btn-icon">⟳</span>
+			<span class="btn-icon" aria-hidden="true">⟳</span>
 			<span class="btn-label">{$autoRefreshEnabled ? 'Auto' : 'Manual'}</span>
 		</button>
 
@@ -177,17 +187,23 @@
 			class="header-btn refresh-btn"
 			onclick={handleRefresh}
 			disabled={$isRefreshing}
-			title="Refresh all data"
+			title="Refresh all data (R)"
+			aria-label="Refresh all data"
 		>
-			<span class="btn-icon" class:spinning={$isRefreshing}>↻</span>
+			<span class="btn-icon" class:spinning={$isRefreshing} aria-hidden="true">↻</span>
 			<span class="btn-label">Refresh</span>
 		</button>
 
-		<button class="header-btn settings-btn" onclick={onSettingsClick} title="Settings">
-			<span class="btn-icon">⚙</span>
+		<button
+			class="header-btn settings-btn"
+			onclick={onSettingsClick}
+			title="Settings (S)"
+			aria-label="Open settings"
+		>
+			<span class="btn-icon" aria-hidden="true">⚙</span>
 			<span class="btn-label">Settings</span>
 		</button>
-	</div>
+	</nav>
 </header>
 
 <style>
@@ -322,9 +338,62 @@
 		min-height: 2rem;
 	}
 
+	/* Mobile: Icon-only buttons, hide logo text */
+	@media (max-width: 480px) {
+		.header {
+			padding: 0.4rem 0.5rem;
+			gap: 0.5rem;
+		}
+
+		.logo {
+			font-size: 0.7rem;
+			letter-spacing: 0.05em;
+		}
+
+		.header-center {
+			display: none;
+		}
+
+		.header-right {
+			gap: 0.25rem;
+		}
+
+		.header-btn {
+			padding: 0.35rem 0.5rem;
+			min-height: 2.25rem;
+		}
+
+		.btn-icon {
+			font-size: 0.75rem;
+		}
+	}
+
+	/* Small tablets: Show status but no labels */
+	@media (min-width: 481px) and (max-width: 767px) {
+		.header {
+			gap: 0.5rem;
+		}
+
+		.header-center {
+			flex: 0;
+		}
+	}
+
+	/* Desktop: Show full labels */
 	@media (min-width: 768px) {
 		.btn-label {
 			display: inline;
+		}
+	}
+
+	/* Large desktop: Even more space */
+	@media (min-width: 1200px) {
+		.header {
+			padding: 0.6rem 1.5rem;
+		}
+
+		.header-btn {
+			padding: 0.5rem 1rem;
 		}
 	}
 </style>
