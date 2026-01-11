@@ -15,22 +15,61 @@
 		const oneHourAgo = now - (60 * 60 * 1000);
 		const twoHoursAgo = now - (2 * 60 * 60 * 1000);
 
-		// Priority sources
+		// Priority verified sources - expanded list
 		const prioritySources = new Set([
+			// News Agencies
 			'reuters',
 			'associated press',
 			'ap news',
+			'afp',
+			'agence france-presse',
+			'united press international',
+			'upi',
+			// International News
 			'bbc',
 			'the guardian',
+			'al jazeera',
+			'france 24',
+			'dw',
+			'deutsche welle',
+			'nbc news',
+			'cbc',
+			'abc news',
+			'cbs news',
+			'npr',
+			'pbs',
+			// US Papers of Record
 			'new york times',
 			'washington post',
-			'foreign policy',
-			'the economist',
-			'financial times',
 			'wall street journal',
+			'usa today',
+			'los angeles times',
+			// Political & Policy
 			'politico',
-			'al jazeera',
-			'bloomberg'
+			'the hill',
+			'axios',
+			'foreign policy',
+			'foreign affairs',
+			// Business & Finance
+			'bloomberg',
+			'financial times',
+			'cnbc',
+			'forbes',
+			'the economist',
+			'business insider',
+			// Technology
+			'techcrunch',
+			'wired',
+			'ars technica',
+			'the verge',
+			// Regional/International
+			'south china morning post',
+			'japan times',
+			'straits times',
+			'times of india',
+			'haaretz',
+			'el país',
+			'le monde'
 		]);
 
 		return news

@@ -390,17 +390,23 @@
 		tooltipContent = null;
 	}
 
-	// Build enhanced tooltip with weather
+	// Build enhanced tooltip with weather and news
 	async function showEnhancedTooltip(
 		event: MouseEvent,
-		_name: string,
+		name: string,
 		lat: number,
 		lon: number,
 		desc: string,
 		color: string
 	): Promise<void> {
 		const localTime = getLocalTime(lon);
-		const lines = [`🕐 Local: ${localTime}`];
+		const locationNews = getLocationNews(name);
+		
+		const newsLines = locationNews.length > 0 
+			? ['', '📰 Recent News:', ...locationNews.map(n => `• ${n.title.slice(0, 60)}...`)]
+			: [];
+		
+		const lines = [`🕐 Local: ${localTime}`, ...newsLines];
 		showTooltip(event, desc, color, lines);
 
 		// Fetch weather asynchronously
@@ -411,7 +417,8 @@
 				color,
 				lines: [
 					`🕐 Local: ${localTime}`,
-					`${weather.condition} ${weather.temp}°F, ${weather.wind}mph`
+					`${weather.condition} ${weather.temp}°F, ${weather.wind}mph`,
+					...newsLines
 				]
 			};
 		}
