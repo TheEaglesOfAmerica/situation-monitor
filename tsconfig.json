@@ -7,12 +7,20 @@
 		"noUnusedParameters": true,
 		"forceConsistentCasingInFileNames": true,
 		"moduleResolution": "bundler",
+		"module": "esnext",
 		"target": "ES2022",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"lib": ["ES2022", "DOM", "DOM.AsyncIterable", "ES2023"],
 		"allowJs": true,
-		"checkJs": true,
+		"checkJs": false,
 		"skipLibCheck": true,
-		"noEmit": true
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"$lib": ["src/lib"],
+			"$lib/*": ["src/lib/*"],
+			"$app/*": [".svelte-kit/runtime/app/*"]
+		}
 	},
-	"exclude": ["static", "node_modules", ".svelte-kit"]
+	"include": ["src/**/*"],
+	"exclude": ["static", "node_modules", ".svelte-kit", "**.config.*"]
 }
