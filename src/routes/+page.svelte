@@ -58,6 +58,12 @@
 	// Compact mode for reduced padding
 	let compactMode = $state(false);
 
+	// Collapsed panels state
+	let allPanelsCollapsed = $state(false);
+
+	// Panel visibility quick toggle dropdown
+	let visibilityDropdownOpen = $state(false);
+
 	// Misc panel data
 	let predictions = $state<Prediction[]>([]);
 	let whales = $state<WhaleTransaction[]>([]);
@@ -239,6 +245,11 @@
 				e.preventDefault();
 				settingsOpen = true;
 				break;
+			case 'x':
+				// Toggle collapse all
+				e.preventDefault();
+				handleCollapseAllToggle();
+				break;
 			case 'escape':
 				// Exit edit mode or close modals
 				if (editMode) {
@@ -262,6 +273,20 @@
 			localStorage.setItem('compactMode', String(compactMode));
 		}
 	}
+
+	// Toggle collapse all panels
+	function handleCollapseAllToggle() {
+		allPanelsCollapsed = !allPanelsCollapsed;
+		// Dispatch custom event to all panels
+		window.dispatchEvent(new CustomEvent('toggleAllPanels', { 
+			detail: { collapsed: allPanelsCollapsed } 
+		}));
+	}
+
+	// Toggle panel visibility
+	function togglePanelVisibility(panelId: string) {
+		settings.togglePanel(panelId as any);
+	}
 </script>
 
 <svelte:head>
@@ -277,6 +302,10 @@
 		onEditModeToggle={handleEditModeToggle}
 		{compactMode}
 		onCompactModeToggle={handleCompactModeToggle}
+		{allPanelsCollapsed}
+		onCollapseAllToggle={handleCollapseAllToggle}
+		{visibilityDropdownOpen}
+		onVisibilityDropdownToggle={() => visibilityDropdownOpen = !visibilityDropdownOpen}
 	/>
 
 	<main class="main-content" class:compact={compactMode}>
@@ -433,6 +462,27 @@
 			{/if}
 		{/each}
 	</Dashboard>
+
+	<!-- Panel Visibility Quick Toggle Dropdown -->
+	{#if visibilityDropdownOpen}
+		<div class="visibility-dropdown-overlay" onclick={() => visibilityDropdownOpen = false}>
+			<div class="visibility-dropdown" onclick={(e) => e.stopPropagation()}>
+				<div class="visibility-header">Quick Panel Toggles</div>
+				<div class="visibility-grid">
+					{#each Object.keys($settings.enabled) as panelId}
+						<label class="visibility-item">
+							<input 
+								type="checkbox" 
+								checked={$settings.enabled[panelId as keyof typeof $settings.enabled]}
+								onchange={() => togglePanelVisibility(panelId)}
+							/>
+							<span>{panelId}</span>
+						</label>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
 	<!-- Modals -->
 	<SettingsModal
@@ -460,11 +510,75 @@
 		flex: 1;
 		padding: 0.5rem;
 		overflow-y: auto;
+		position: relative;
 	}
 
 	.map-slot {
 		column-span: all;
 		margin-bottom: 0.5rem;
+	}
+
+	/* Visibility dropdown */
+	.visibility-dropdown-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		z-index: 1000;
+		display: flex;
+		align-items: flex-start;
+		justify-content: flex-end;
+		padding: 3.5rem 1rem 1rem 1rem;
+	}
+
+	.visibility-dropdown {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 1rem;
+		max-width: 400px;
+		width: 100%;
+		max-height: 80vh;
+		overflow-y: auto;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+	}
+
+	.visibility-header {
+		font-weight: 700;
+		font-size: 0.9rem;
+		margin-bottom: 1rem;
+		color: var(--text-primary);
+	}
+
+	.visibility-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+		gap: 0.5rem;
+	}
+
+	.visibility-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		font-size: 0.75rem;
+		text-transform: capitalize;
+	}
+
+	.visibility-item:hover {
+		background: var(--border);
+		border-color: var(--accent);
+	}
+
+	.visibility-item input[type="checkbox"] {
+		cursor: pointer;
 	}
 
 	@media (max-width: 768px) {

@@ -16,9 +16,13 @@
 		onEditModeToggle?: () => void;
 		compactMode?: boolean;
 		onCompactModeToggle?: () => void;
+		allPanelsCollapsed?: boolean;
+		onCollapseAllToggle?: () => void;
+		visibilityDropdownOpen?: boolean;
+		onVisibilityDropdownToggle?: () => void;
 	}
 
-	let { onRefresh, onSettingsClick, editMode = false, onEditModeToggle, compactMode = false, onCompactModeToggle }: Props = $props();
+	let { onRefresh, onSettingsClick, editMode = false, onEditModeToggle, compactMode = false, onCompactModeToggle, allPanelsCollapsed = false, onCollapseAllToggle, visibilityDropdownOpen = false, onVisibilityDropdownToggle }: Props = $props();
 
 	// Notification state
 	let notificationsOn = $state(false);
@@ -117,6 +121,28 @@
 	</div>
 
 	<div class="header-right">
+		<!-- Collapse All Toggle -->
+		<button
+			class="header-btn"
+			class:active={allPanelsCollapsed}
+			onclick={onCollapseAllToggle}
+			title={allPanelsCollapsed ? 'Expand all panels' : 'Collapse all panels'}
+		>
+			<span class="btn-icon">{allPanelsCollapsed ? '▼' : '▲'}</span>
+			<span class="btn-label">{allPanelsCollapsed ? 'Expand' : 'Collapse'}</span>
+		</button>
+
+		<!-- Panel Visibility Toggle -->
+		<button
+			class="header-btn"
+			class:active={visibilityDropdownOpen}
+			onclick={onVisibilityDropdownToggle}
+			title="Toggle panel visibility"
+		>
+			<span class="btn-icon">👁</span>
+			<span class="btn-label">Panels</span>
+		</button>
+
 		<!-- Compact Mode Toggle -->
 		<button
 			class="header-btn"
