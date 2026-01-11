@@ -15,18 +15,25 @@
 	let dragOverPanelId: string | null = $state(null);
 
 	function handleDragStart(e: DragEvent) {
-		if (!editMode) return;
+		if (!editMode) {
+			e.preventDefault();
+			return;
+		}
 		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (!target) return;
+		if (!target) {
+			e.preventDefault();
+			return;
+		}
 		
 		const panelId = target.dataset.panelId;
 		if (panelId) {
 			draggedPanelId = panelId;
-			e.dataTransfer?.setData('text/plain', panelId);
 			if (e.dataTransfer) {
+				e.dataTransfer.setData('text/plain', panelId);
 				e.dataTransfer.effectAllowed = 'move';
 			}
 			target.classList.add('dragging');
+			console.log('Drag started:', panelId);
 		}
 	}
 
@@ -42,19 +49,34 @@
 	function handleDragOver(e: DragEvent) {
 		if (!editMode || !draggedPanelId) return;
 		e.preventDefault();
+		e.stopPropagation();
 		if (e.dataTransfer) {
 			e.dataTransfer.dropEffect = 'move';
 		}
 		
 		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
 		if (target && target.dataset.panelId !== draggedPanelId) {
-			dragOverPanelId = target.dataset.panelId || null;
+			const newDragOverId = target.dataset.panelId || null;
+			if (newDragOverId !== dragOverPanelId) {
+				// Remove previous drag-over class
+				if (dragOverPanelId) {
+					const prevTarget = document.querySelector(`[data-panel-id="${dragOverPanelId}"]`);
+					prevTarget?.classList.remove('drag-over');
+				}
+				// Add new drag-over class
+				dragOverPanelId = newDragOverId;
+				if (dragOverPanelId) {
+					target.classList.add('drag-over');
+				}
+			}
 		}
 	}
 
 	function handleDragLeave(e: DragEvent) {
+		e.preventDefault();
 		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
 		if (target && target.dataset.panelId === dragOverPanelId) {
+			target.classList.remove('drag-over');
 			dragOverPanelId = null;
 		}
 	}
@@ -62,9 +84,16 @@
 	function handleDrop(e: DragEvent) {
 		if (!editMode) return;
 		e.preventDefault();
+		e.stopPropagation();
 		
 		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
 		if (!target || !draggedPanelId) return;
+		
+		// Clean up drag-over class
+		if (dragOverPanelId) {
+			const dragOverTarget = document.querySelector(`[data-panel-id="${dragOverPanelId}"]`);
+			dragOverTarget?.classList.remove('drag-over');
+		}
 		
 		const targetPanelId = target.dataset.panelId;
 		if (targetPanelId && targetPanelId !== draggedPanelId) {
@@ -77,6 +106,7 @@
 				order.splice(fromIndex, 1);
 				order.splice(toIndex, 0, draggedPanelId as typeof order[number]);
 				settings.updateOrder(order);
+				console.log('Panel reordered:', draggedPanelId, '->', targetPanelId);
 			}
 		}
 		
@@ -170,6 +200,12 @@
 
 	.edit-mode :global([data-panel-id]) {
 		cursor: grab;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.edit-mode :global([data-panel-id]:active) {
+		cursor: grabbing;
 	}
 
 	.edit-mode :global([data-panel-id]:hover) {

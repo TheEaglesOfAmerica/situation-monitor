@@ -188,26 +188,49 @@ export async function fetchCategoryNews(category: NewsCategory): Promise<NewsIte
 		const proxyUrl = CORS_PROXY_URL + encodeURIComponent(rssUrl);
 		logger.log('News API', `Fetching ${category} from Google News RSS`);
 
-		const response = await fetch(proxyUrl);
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-		}
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-		const xml = await response.text();
-		
-		// Check if we got XML (not an error page)
-		if (!xml.includes('<rss') && !xml.includes('<item>')) {
-			logger.warn('News API', `Invalid RSS response for ${category}`);
+		try {
+			const response = await fetch(proxyUrl, { 
+				signal: controller.signal,
+				headers: {
+					'Accept': 'application/xml, text/xml, */*'
+				}
+			});
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				logger.error('News API', `HTTP ${response.status} for ${category}: ${response.statusText}`);
+				return [];
+			}
+
+			const xml = await response.text();
+			
+			// Check if we got XML (not an error page)
+			if (!xml.includes('<rss') && !xml.includes('<item>')) {
+				logger.warn('News API', `Invalid RSS response for ${category}`);
+				console.log('Response preview:', xml.substring(0, 200));
+				return [];
+			}
+
+			const articles = parseRSS(xml, category)
+				.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+				.slice(0, 15);
+
+			logger.log('News API', `Successfully fetched ${articles.length} ${category} articles`);
+			return articles;
+		} catch (fetchError) {
+			clearTimeout(timeoutId);
+			if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+				logger.error('News API', `Request timeout for ${category}`);
+			} else {
+				logger.error('News API', `Fetch error for ${category}:`, fetchError);
+			}
 			return [];
 		}
-
-		const articles = parseRSS(xml, category)
-			.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
-			.slice(0, 15);
-
-		return articles;
 	} catch (error) {
-		logger.error('News API', `Error fetching ${category}:`, error);
+		logger.error('News API', `Unexpected error fetching ${category}:`, error);
 		return [];
 	}
 }

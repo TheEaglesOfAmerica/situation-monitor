@@ -2,13 +2,14 @@
  * API Configuration
  */
 
-import { browser } from '$app/environment';
+// Check if we're in a browser environment
+const browser = typeof window !== 'undefined';
 
 /**
  * Check if we're in development mode
  * Uses import.meta.env which is available in both browser and test environments
  */
-const isDev = browser ? (import.meta.env?.DEV ?? false) : false;
+const isDev = browser ? ((import.meta as any).env?.DEV ?? false) : false;
 
 /**
  * CORS proxy URL for external API requests
