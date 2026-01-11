@@ -92,17 +92,6 @@ function hashCode(str: string): string {
 }
 
 /**
- * Extract content from XML tag
- */
-function extractTag(xml: string, tag: string): string {
-	const regex = new RegExp(
-		`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`
-	);
-	const match = xml.match(regex);
-	return match ? (match[1] || match[2] || '').trim() : '';
-}
-
-/**
  * Decode HTML entities
  */
 function decodeHTMLEntities(text: string): string {
@@ -113,51 +102,6 @@ function decodeHTMLEntities(text: string): string {
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/&apos;/g, "'");
-}
-
-/**
- * Parse RSS XML and extract articles
- */
-function parseRSS(xml: string, category: NewsCategory): NewsItem[] {
-	const items: NewsItem[] = [];
-
-	// Simple regex-based XML parsing (works for Google News RSS)
-	const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-	let match;
-	let index = 0;
-
-	while ((match = itemRegex.exec(xml)) !== null) {
-		const itemXml = match[1];
-
-		// Extract fields
-		const title = extractTag(itemXml, 'title');
-		const link = extractTag(itemXml, 'link');
-		const pubDate = extractTag(itemXml, 'pubDate');
-		const source = extractTag(itemXml, 'source') || 'Google News';
-
-		if (!title || !link) continue;
-
-		const urlHash = hashCode(link);
-		const alert = containsAlertKeyword(title);
-
-		items.push({
-			id: `gnews-${category}-${urlHash}-${index}`,
-			title: decodeHTMLEntities(title),
-			link,
-			pubDate,
-			timestamp: pubDate ? new Date(pubDate).getTime() : Date.now(),
-			source: decodeHTMLEntities(source),
-			category,
-			isAlert: !!alert,
-			alertKeyword: alert?.keyword || undefined,
-			region: detectRegion(title) ?? undefined,
-			topics: detectTopics(title),
-			relevanceScore: calculateRelevanceScore(title, source, pubDate)
-		});
-		index++;
-	}
-
-	return items;
 }
 
 /**
@@ -233,7 +177,7 @@ export async function fetchCategoryNews(category: NewsCategory): Promise<NewsIte
 			});
 
 			const sorted = articles
-				.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+				.sort((a: NewsItem, b: NewsItem) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
 				.slice(0, 15);
 
 			logger.log('News API', `Fetched ${sorted.length} ${category} articles`);
