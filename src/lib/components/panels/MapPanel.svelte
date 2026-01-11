@@ -776,11 +776,13 @@
 	});
 
 	onMount(() => {
+		let keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
 		if (browser) {
 			weatherOverlayEnabled = localStorage.getItem(OVERLAY_STORAGE_KEY) === '1';
 
 			// Keyboard shortcuts
-			const handleKeydown = (e: KeyboardEvent) => {
+			keydownHandler = (e: KeyboardEvent) => {
 				// Escape to close selection/search
 				if (e.key === 'Escape') {
 					if (selectedHotspot) {
@@ -806,14 +808,19 @@
 					searchInput?.focus();
 				}
 			};
-			window.addEventListener('keydown', handleKeydown);
-
-			// Cleanup
-			return () => window.removeEventListener('keydown', handleKeydown);
+			window.addEventListener('keydown', keydownHandler);
 		}
+
 		initMap();
 		refreshWeatherSnapshots();
 		weatherTimer = window.setInterval(refreshWeatherSnapshots, 5 * 60 * 1000);
+
+		// Cleanup
+		return () => {
+			if (keydownHandler) {
+				window.removeEventListener('keydown', keydownHandler);
+			}
+		};
 	});
 
 	onDestroy(() => {
