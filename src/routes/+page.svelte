@@ -5,6 +5,7 @@
 	import { SettingsModal, MonitorFormModal, OnboardingModal } from '$lib/components/modals';
 	import {
 		NewsPanel,
+		RealtimePanel,
 		MarketsPanel,
 		HeatmapPanel,
 		CommoditiesPanel,
@@ -316,6 +317,10 @@
 					{#if panelId === 'map'}
 						<div class="panel-slot map-slot" data-panel-id="map" draggable={editMode}>
 							<MapPanel monitors={$monitors.monitors} />
+						</div>
+					{:else if panelId === 'realtime'}
+						<div class="panel-slot" data-panel-id="realtime" draggable={editMode}>
+							<RealtimePanel news={allNewsItems} />
 						</div>
 					{:else if panelId === 'politics'}
 						<div class="panel-slot" data-panel-id="politics" draggable={editMode}>

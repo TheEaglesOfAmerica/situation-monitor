@@ -9,6 +9,7 @@ export interface PanelConfig {
 
 export type PanelId =
 	| 'map'
+	| 'realtime'
 	| 'politics'
 	| 'tech'
 	| 'finance'
@@ -34,6 +35,7 @@ export type PanelId =
 
 export const PANELS: Record<PanelId, PanelConfig> = {
 	map: { name: 'Global Map', priority: 1 },
+	realtime: { name: 'Breaking News', priority: 1 },
 	politics: { name: 'World / Geopolitical', priority: 1 },
 	tech: { name: 'Technology / AI', priority: 1 },
 	finance: { name: 'Financial', priority: 1 },
