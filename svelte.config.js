@@ -14,6 +14,9 @@ const config = {
 			precompress: false,
 			strict: true
 		}),
+		paths: {
+			base: process.env.BASE_PATH || ''
+		},
 		alias: {
 			$lib: 'src/lib',
 			$components: 'src/lib/components',
