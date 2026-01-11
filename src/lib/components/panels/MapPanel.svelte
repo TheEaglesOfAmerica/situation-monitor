@@ -68,6 +68,21 @@
 	const MIN_ZOOM = 1;
 	const MAX_ZOOM = 6;
 
+
+	// Merge world cities with threat data, auto-calculate scores
+	const allCitiesWithScores = $derived(
+		WORLD_CITIES.map((city) => {
+			const level = city.level || 'low';
+			const emergentScore = calculateEmergentScore(level, Math.random() * 0.3 + 0.35);
+			return {
+				...city,
+				level,
+				emergentScore,
+				desc: city.desc || `${city.name} — ${city.country} (${city.population}M pop)`
+			};
+		})
+	);
+
 	// Filtered hotspots for search
 	const filteredHotspots = $derived(
 		searchQuery.trim()
