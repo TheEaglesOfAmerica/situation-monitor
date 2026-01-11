@@ -127,20 +127,6 @@
 		return 'Other';
 	}
 
-	// Merge world cities with threat data, auto-calculate scores
-	const allCitiesWithScores = $derived(
-		WORLD_CITIES.map((city) => {
-			const level = city.level || 'low';
-			const emergentScore = calculateEmergentScore(level, Math.random() * 0.3 + 0.35);
-			return {
-				...city,
-				level,
-				emergentScore,
-				desc: city.desc || `${city.name} — ${city.country} (${city.population}M pop)`
-			};
-		})
-	);
-
 	// Filter: Show cities with population >= minPop OR threat score >= minThreat
 	// Also apply region and level filters
 	const visibleHotspots = $derived((() => {
