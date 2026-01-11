@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { Header, Dashboard } from '$lib/components/layout';
 	import { SettingsModal, MonitorFormModal, OnboardingModal } from '$lib/components/modals';
 	import {
@@ -41,6 +42,7 @@
 		fetchGovContracts,
 		fetchLayoffs
 	} from '$lib/api';
+	import { initNotifications, processHeadlines, toggleNotifications } from '$lib/services/notifications';
 	import type { Prediction, WhaleTransaction, Contract, Layoff } from '$lib/api';
 	import type { CustomMonitor } from '$lib/types';
 
@@ -49,6 +51,12 @@
 	let monitorFormOpen = $state(false);
 	let onboardingOpen = $state(false);
 	let editingMonitor = $state<CustomMonitor | null>(null);
+
+	// Edit mode for panel rearrangement
+	let editMode = $state(false);
+
+	// Compact mode for reduced padding
+	let compactMode = $state(false);
 
 	// Misc panel data
 	let predictions = $state<Prediction[]>([]);
@@ -77,6 +85,10 @@
 			Object.entries(data).forEach(([category, items]) => {
 				news.setItems(category as keyof typeof data, items);
 			});
+			
+			// Process headlines for AI notifications
+			const allItems = Object.values(data).flat();
+			processHeadlines(allItems);
 		} catch (error) {
 			categories.forEach((cat) => news.setError(cat, String(error)));
 		}
@@ -162,9 +174,17 @@
 
 	// Initial load
 	onMount(() => {
+		// Initialize notifications system
+		initNotifications();
+
 		// Check if first visit
 		if (!settings.isOnboardingComplete()) {
 			onboardingOpen = true;
+		}
+
+		// Load compact mode from localStorage
+		if (browser) {
+			compactMode = localStorage.getItem('compactMode') === 'true';
 		}
 
 		loadNews();
@@ -172,10 +192,76 @@
 		loadMiscData();
 		refresh.setupAutoRefresh(handleRefresh);
 
+		// Add keyboard shortcuts
+		window.addEventListener('keydown', handleKeydown);
+
 		return () => {
 			refresh.stopAutoRefresh();
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
+
+	// Keyboard shortcuts handler
+	function handleKeydown(e: KeyboardEvent) {
+		// Skip if typing in input or textarea
+		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+			return;
+		}
+
+		// Skip if any modifier key is pressed (except for intended combos)
+		if (e.metaKey || e.ctrlKey || e.altKey) {
+			return;
+		}
+
+		switch (e.key.toLowerCase()) {
+			case 'e':
+				// Toggle edit mode
+				e.preventDefault();
+				handleEditModeToggle();
+				break;
+			case 'r':
+				// Refresh data
+				e.preventDefault();
+				handleRefresh();
+				break;
+			case 'n':
+				// Toggle notifications
+				e.preventDefault();
+				toggleNotifications();
+				break;
+			case 'c':
+				// Toggle compact mode
+				e.preventDefault();
+				handleCompactModeToggle();
+				break;
+			case 's':
+				// Open settings
+				e.preventDefault();
+				settingsOpen = true;
+				break;
+			case 'escape':
+				// Exit edit mode or close modals
+				if (editMode) {
+					editMode = false;
+				} else if (settingsOpen) {
+					settingsOpen = false;
+				}
+				break;
+		}
+	}
+
+	// Toggle edit mode
+	function handleEditModeToggle() {
+		editMode = !editMode;
+	}
+
+	// Toggle compact mode
+	function handleCompactModeToggle() {
+		compactMode = !compactMode;
+		if (browser) {
+			localStorage.setItem('compactMode', String(compactMode));
+		}
+	}
 </script>
 
 <svelte:head>
@@ -184,95 +270,102 @@
 </svelte:head>
 
 <div class="app">
-	<Header onRefresh={handleRefresh} onSettingsClick={() => (settingsOpen = true)} />
+	<Header 
+		onRefresh={handleRefresh} 
+		onSettingsClick={() => (settingsOpen = true)} 
+		{editMode}
+		onEditModeToggle={handleEditModeToggle}
+		{compactMode}
+		onCompactModeToggle={handleCompactModeToggle}
+	/>
 
-	<main class="main-content">
-		<Dashboard>
+	<main class="main-content" class:compact={compactMode}>
+		<Dashboard {editMode} {compactMode}>
 			<!-- Map Panel - Full width -->
 			{#if isPanelVisible('map')}
-				<div class="panel-slot map-slot">
+				<div class="panel-slot map-slot" data-panel-id="map" draggable={editMode}>
 					<MapPanel monitors={$monitors.monitors} />
 				</div>
 			{/if}
 
 			<!-- News Panels -->
 			{#if isPanelVisible('politics')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="politics" draggable={editMode}>
 					<NewsPanel category="politics" panelId="politics" title="Politics" />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('tech')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="tech" draggable={editMode}>
 					<NewsPanel category="tech" panelId="tech" title="Tech" />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('finance')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="finance" draggable={editMode}>
 					<NewsPanel category="finance" panelId="finance" title="Finance" />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('gov')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="gov" draggable={editMode}>
 					<NewsPanel category="gov" panelId="gov" title="Government" />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('ai')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="ai" draggable={editMode}>
 					<NewsPanel category="ai" panelId="ai" title="AI" />
 				</div>
 			{/if}
 
 			<!-- Markets Panels -->
 			{#if isPanelVisible('markets')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="markets" draggable={editMode}>
 					<MarketsPanel />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('heatmap')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="heatmap" draggable={editMode}>
 					<HeatmapPanel />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('commodities')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="commodities" draggable={editMode}>
 					<CommoditiesPanel />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('crypto')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="crypto" draggable={editMode}>
 					<CryptoPanel />
 				</div>
 			{/if}
 
 			<!-- Analysis Panels -->
 			{#if isPanelVisible('mainchar')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="mainchar" draggable={editMode}>
 					<MainCharPanel />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('correlation')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="correlation" draggable={editMode}>
 					<CorrelationPanel news={allNewsItems} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('narrative')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="narrative" draggable={editMode}>
 					<NarrativePanel news={allNewsItems} />
 				</div>
 			{/if}
 
 			<!-- Custom Monitors -->
 			{#if isPanelVisible('monitors')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="monitors" draggable={editMode}>
 					<MonitorsPanel
 						monitors={$monitors.monitors}
 						matches={$monitors.matches}
@@ -286,14 +379,14 @@
 
 			<!-- Intel Panel -->
 			{#if isPanelVisible('intel')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="intel" draggable={editMode}>
 					<IntelPanel />
 				</div>
 			{/if}
 
 			<!-- Situation Panels -->
 			{#if isPanelVisible('venezuela')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="venezuela" draggable={editMode}>
 					<SituationPanel
 						panelId="venezuela"
 						config={{
@@ -311,7 +404,7 @@
 			{/if}
 
 			{#if isPanelVisible('greenland')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="greenland" draggable={editMode}>
 					<SituationPanel
 						panelId="greenland"
 						config={{
@@ -329,7 +422,7 @@
 			{/if}
 
 			{#if isPanelVisible('iran')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="iran" draggable={editMode}>
 					<SituationPanel
 						panelId="iran"
 						config={{
@@ -360,25 +453,25 @@
 
 			<!-- Placeholder panels for additional data sources -->
 			{#if isPanelVisible('whales')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="whales" draggable={editMode}>
 					<WhalePanel {whales} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('polymarket')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="polymarket" draggable={editMode}>
 					<PolymarketPanel {predictions} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('contracts')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="contracts" draggable={editMode}>
 					<ContractsPanel {contracts} />
 				</div>
 			{/if}
 
 			{#if isPanelVisible('layoffs')}
-				<div class="panel-slot">
+				<div class="panel-slot" data-panel-id="layoffs" draggable={editMode}>
 					<LayoffsPanel {layoffs} />
 				</div>
 			{/if}

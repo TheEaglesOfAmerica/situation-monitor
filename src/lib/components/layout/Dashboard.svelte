@@ -1,18 +1,104 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { settings } from '$lib/stores';
 
 	interface Props {
 		children: Snippet;
+		editMode?: boolean;
+		compactMode?: boolean;
 	}
 
-	let { children }: Props = $props();
+	let { children, editMode = false, compactMode = false }: Props = $props();
 
-	// Drag-drop state and handlers will be added in Phase 4
-	// when panels are fully implemented
+	// Drag state
+	let draggedPanelId: string | null = $state(null);
+	let dragOverPanelId: string | null = $state(null);
+
+	function handleDragStart(e: DragEvent) {
+		if (!editMode) return;
+		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
+		if (!target) return;
+		
+		const panelId = target.dataset.panelId;
+		if (panelId) {
+			draggedPanelId = panelId;
+			e.dataTransfer?.setData('text/plain', panelId);
+			if (e.dataTransfer) {
+				e.dataTransfer.effectAllowed = 'move';
+			}
+			target.classList.add('dragging');
+		}
+	}
+
+	function handleDragEnd(e: DragEvent) {
+		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
+		if (target) {
+			target.classList.remove('dragging');
+		}
+		draggedPanelId = null;
+		dragOverPanelId = null;
+	}
+
+	function handleDragOver(e: DragEvent) {
+		if (!editMode || !draggedPanelId) return;
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'move';
+		}
+		
+		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
+		if (target && target.dataset.panelId !== draggedPanelId) {
+			dragOverPanelId = target.dataset.panelId || null;
+		}
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
+		if (target && target.dataset.panelId === dragOverPanelId) {
+			dragOverPanelId = null;
+		}
+	}
+
+	function handleDrop(e: DragEvent) {
+		if (!editMode) return;
+		e.preventDefault();
+		
+		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
+		if (!target || !draggedPanelId) return;
+		
+		const targetPanelId = target.dataset.panelId;
+		if (targetPanelId && targetPanelId !== draggedPanelId) {
+			// Get current order and swap positions
+			const order = [...$settings.order];
+			const fromIndex = order.indexOf(draggedPanelId as typeof order[number]);
+			const toIndex = order.indexOf(targetPanelId as typeof order[number]);
+			
+			if (fromIndex !== -1 && toIndex !== -1) {
+				order.splice(fromIndex, 1);
+				order.splice(toIndex, 0, draggedPanelId as typeof order[number]);
+				settings.updateOrder(order);
+			}
+		}
+		
+		draggedPanelId = null;
+		dragOverPanelId = null;
+	}
 </script>
 
-<main class="dashboard">
-	<div class="dashboard-grid">
+<main class="dashboard" class:edit-mode={editMode} class:compact={compactMode}>
+	{#if editMode}
+		<div class="edit-banner">
+			<span>📝 Drag panels to rearrange • Press E or click Done when finished</span>
+		</div>
+	{/if}
+	<div 
+		class="dashboard-grid"
+		ondragstart={handleDragStart}
+		ondragend={handleDragEnd}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+	>
 		{@render children()}
 	</div>
 </main>
@@ -22,6 +108,39 @@
 		flex: 1;
 		padding: 0.5rem;
 		overflow-y: auto;
+	}
+
+	.dashboard.compact {
+		padding: 0.25rem;
+	}
+
+	.dashboard.compact .dashboard-grid {
+		column-gap: 0.25rem;
+	}
+
+	.dashboard.compact .dashboard-grid > :global(*) {
+		margin-bottom: 0.25rem;
+	}
+
+	.edit-mode {
+		background: repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 10px,
+			rgba(var(--accent-rgb), 0.03) 10px,
+			rgba(var(--accent-rgb), 0.03) 20px
+		);
+	}
+
+	.edit-banner {
+		background: var(--accent);
+		color: var(--bg);
+		padding: 0.5rem 1rem;
+		text-align: center;
+		font-size: 0.75rem;
+		font-weight: 600;
+		border-radius: 4px;
+		margin-bottom: 0.5rem;
 	}
 
 	.dashboard-grid {
@@ -34,6 +153,27 @@
 	.dashboard-grid > :global(*) {
 		break-inside: avoid;
 		margin-bottom: 0.5rem;
+	}
+
+	.dashboard-grid > :global(.dragging) {
+		opacity: 0.5;
+		transform: scale(0.98);
+	}
+
+	.dashboard-grid > :global(.drag-over) {
+		border: 2px dashed var(--accent) !important;
+	}
+
+	:global([data-panel-id]) {
+		transition: transform 0.15s ease, opacity 0.15s ease;
+	}
+
+	.edit-mode :global([data-panel-id]) {
+		cursor: grab;
+	}
+
+	.edit-mode :global([data-panel-id]:hover) {
+		box-shadow: 0 0 0 2px var(--accent);
 	}
 
 	@media (min-width: 600px) {
