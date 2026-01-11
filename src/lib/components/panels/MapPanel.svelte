@@ -39,6 +39,8 @@
 	let d3Module: typeof import('d3') | null = null;
 	let svg: any = null;
 	let mapGroup: any = null;
+	let hotspotsLayer: any = null;
+	let weatherLayer: any = null;
 	let projection: any = null;
 	let path: any = null;
 	let zoom: any = null;
@@ -126,7 +128,7 @@
 
 	// Filter: Show cities with population >= minPop OR threat score >= minThreat
 	// Also apply region and level filters
-	const visibleHotspots = $derived(() => {
+	const visibleHotspots = $derived((() => {
 		if (!showCities) return [];
 		
 		return allCitiesWithScores.filter((city) => {
@@ -147,7 +149,7 @@
 			
 			return true;
 		});
-	});
+	})());
 
 	// Critical situations (score >= 70)
 	const criticalSituations = $derived(
@@ -186,7 +188,6 @@
 	const OVERLAY_STORAGE_KEY = 'mapWeatherOverlay';
 
 	// Weather overlay state
-	let weatherLayer: any = null;
 	let weatherOverlayEnabled = $state(false);
 	let weatherSnapshots = $state<Record<string, WeatherResult | null>>({});
 	let weatherUpdatedAt = $state<string | null>(null);
@@ -528,6 +529,7 @@
 		svg.attr('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
 
 		mapGroup = svg.append('g').attr('id', 'mapGroup');
+		hotspotsLayer = mapGroup.append('g').attr('id', 'hotspotsLayer');
 		weatherLayer = mapGroup.append('g').attr('id', 'weatherLayer');
 
 		// Setup zoom - allow cmd/ctrl+scroll on desktop, touch pinch on mobile
@@ -752,46 +754,8 @@
 				}
 			});
 
-			// Draw hotspots (only major cities or 40+ score)
-			visibleHotspots.forEach((h) => {
-				const [x, y] = projection([h.lon, h.lat]) || [0, 0];
-				if (x && y) {
-					const color = THREAT_COLORS[h.level];
-					// Pulsing circle
-					mapGroup
-						.append('circle')
-						.attr('cx', x)
-						.attr('cy', y)
-						.attr('r', 6)
-						.attr('fill', color)
-						.attr('fill-opacity', 0.3)
-						.attr('class', 'pulse');
-					// Inner dot
-					mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3).attr('fill', color);
-					// Label
-					mapGroup
-						.append('text')
-						.attr('x', x + 8)
-						.attr('y', y + 3)
-						.attr('fill', color)
-						.attr('font-size', '8px')
-						.attr('font-family', 'monospace')
-						.text(h.name);
-					// Hit area
-					mapGroup
-						.append('circle')
-						.attr('cx', x)
-						.attr('cy', y)
-						.attr('r', 12)
-						.attr('fill', 'transparent')
-						.attr('class', 'hotspot-hit')
-						.on('mouseenter', (event: MouseEvent) =>
-							showEnhancedTooltip(event, h.name, h.lat, h.lon, h.desc, color)
-						)
-						.on('mousemove', moveTooltip)
-						.on('mouseleave', hideTooltip);
-				}
-			});
+			// Draw hotspots
+			drawHotspots();
 
 			// Draw custom monitors with locations
 			drawMonitors();
@@ -807,6 +771,60 @@
 			console.error('Failed to load map data:', err);
 		}
 	}
+
+	function drawHotspots(): void {
+		if (!hotspotsLayer || !projection) return;
+
+		hotspotsLayer.selectAll('*').remove();
+
+		visibleHotspots.forEach((h) => {
+			const [x, y] = projection([h.lon, h.lat]) || [0, 0];
+			if (x && y) {
+				const color = THREAT_COLORS[h.level as keyof typeof THREAT_COLORS] || '#00ff00';
+				// Pulsing circle
+				hotspotsLayer
+					.append('circle')
+					.attr('cx', x)
+					.attr('cy', y)
+					.attr('r', 6)
+					.attr('fill', color)
+					.attr('fill-opacity', 0.3)
+					.attr('class', 'pulse');
+				// Inner dot
+				hotspotsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 3).attr('fill', color);
+				// Label
+				hotspotsLayer
+					.append('text')
+					.attr('x', x + 8)
+					.attr('y', y + 3)
+					.attr('fill', color)
+					.attr('font-size', '8px')
+					.attr('font-family', 'monospace')
+					.text(h.name);
+				// Hit area
+				hotspotsLayer
+					.append('circle')
+					.attr('cx', x)
+					.attr('cy', y)
+					.attr('r', 12)
+					.attr('fill', 'transparent')
+					.attr('class', 'hotspot-hit')
+					.on('mouseenter', (event: MouseEvent) =>
+						showEnhancedTooltip(event, h.name, h.lat, h.lon, h.desc, color)
+					)
+					.on('mousemove', moveTooltip)
+					.on('mouseleave', hideTooltip);
+			}
+		});
+	}
+
+	$effect(() => {
+		// Re-draw hotspots when filter changes or map initializes
+		const _ = visibleHotspots; // dependency
+		if (hotspotsLayer && projection) {
+			drawHotspots();
+		}
+	});
 
 	// Draw custom monitor locations
 	function drawMonitors(): void {
@@ -1022,7 +1040,7 @@
 								</div>
 							</div>
 							<div class="filter-stats">
-								Showing {visibleHotspots().length} of {allCitiesWithScores.length} cities
+								Showing {visibleHotspots.length} of {allCitiesWithScores.length} cities
 							</div>
 						</div>
 					{/if}
