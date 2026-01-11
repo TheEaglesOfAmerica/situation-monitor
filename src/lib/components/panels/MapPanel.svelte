@@ -21,10 +21,7 @@
 	import { WORLD_CITIES } from '$lib/config/world-cities';
 	import type { Hotspot, ScoreBreakdown } from '$lib/config/map';
 	import { CACHE_TTLS } from '$lib/config/api';
-	import type { CustomMonitor } from '$lib/types';
-	import type { NewsItem } from '$lib/types';
-
-	import type { NewsItem } from '$lib/types';
+	import type { CustomMonitor, NewsItem } from '$lib/types';
 
 	interface Props {
 		monitors?: CustomMonitor[];
