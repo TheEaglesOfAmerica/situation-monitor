@@ -1,134 +1,16 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { settings } from '$lib/stores';
 
 	interface Props {
 		children: Snippet;
-		editMode?: boolean;
 		compactMode?: boolean;
 	}
 
-	let { children, editMode = false, compactMode = false }: Props = $props();
-
-	// Drag state
-	let draggedPanelId: string | null = $state(null);
-	let dragOverPanelId: string | null = $state(null);
-
-	function handleDragStart(e: DragEvent) {
-		if (!editMode) {
-			e.preventDefault();
-			return;
-		}
-		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (!target) {
-			e.preventDefault();
-			return;
-		}
-		
-		const panelId = target.dataset.panelId;
-		if (panelId) {
-			draggedPanelId = panelId;
-			if (e.dataTransfer) {
-				e.dataTransfer.setData('text/plain', panelId);
-				e.dataTransfer.effectAllowed = 'move';
-			}
-			target.classList.add('dragging');
-			console.log('Drag started:', panelId);
-		}
-	}
-
-	function handleDragEnd(e: DragEvent) {
-		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (target) {
-			target.classList.remove('dragging');
-		}
-		draggedPanelId = null;
-		dragOverPanelId = null;
-	}
-
-	function handleDragOver(e: DragEvent) {
-		if (!editMode || !draggedPanelId) return;
-		e.preventDefault();
-		e.stopPropagation();
-		if (e.dataTransfer) {
-			e.dataTransfer.dropEffect = 'move';
-		}
-		
-		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (target && target.dataset.panelId !== draggedPanelId) {
-			const newDragOverId = target.dataset.panelId || null;
-			if (newDragOverId !== dragOverPanelId) {
-				// Remove previous drag-over class
-				if (dragOverPanelId) {
-					const prevTarget = document.querySelector(`[data-panel-id="${dragOverPanelId}"]`);
-					prevTarget?.classList.remove('drag-over');
-				}
-				// Add new drag-over class
-				dragOverPanelId = newDragOverId;
-				if (dragOverPanelId) {
-					target.classList.add('drag-over');
-				}
-			}
-		}
-	}
-
-	function handleDragLeave(e: DragEvent) {
-		e.preventDefault();
-		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (target && target.dataset.panelId === dragOverPanelId) {
-			target.classList.remove('drag-over');
-			dragOverPanelId = null;
-		}
-	}
-
-	function handleDrop(e: DragEvent) {
-		if (!editMode) return;
-		e.preventDefault();
-		e.stopPropagation();
-		
-		const target = (e.target as HTMLElement).closest('[data-panel-id]') as HTMLElement;
-		if (!target || !draggedPanelId) return;
-		
-		// Clean up drag-over class
-		if (dragOverPanelId) {
-			const dragOverTarget = document.querySelector(`[data-panel-id="${dragOverPanelId}"]`);
-			dragOverTarget?.classList.remove('drag-over');
-		}
-		
-		const targetPanelId = target.dataset.panelId;
-		if (targetPanelId && targetPanelId !== draggedPanelId) {
-			// Get current order and swap positions
-			const order = [...$settings.order];
-			const fromIndex = order.indexOf(draggedPanelId as typeof order[number]);
-			const toIndex = order.indexOf(targetPanelId as typeof order[number]);
-			
-			if (fromIndex !== -1 && toIndex !== -1) {
-				order.splice(fromIndex, 1);
-				order.splice(toIndex, 0, draggedPanelId as typeof order[number]);
-				settings.updateOrder(order);
-				console.log('Panel reordered:', draggedPanelId, '->', targetPanelId);
-			}
-		}
-		
-		draggedPanelId = null;
-		dragOverPanelId = null;
-	}
+	let { children, compactMode = false }: Props = $props();
 </script>
 
-<main class="dashboard" class:edit-mode={editMode} class:compact={compactMode}>
-	{#if editMode}
-		<div class="edit-banner">
-			<span>📝 Drag panels to rearrange • Press <kbd>E</kbd> or click Done • Shortcuts: <kbd>R</kbd>=Refresh <kbd>N</kbd>=Notifications <kbd>C</kbd>=Compact <kbd>X</kbd>=Collapse</span>
-		</div>
-	{/if}
-	<div 
-		class="dashboard-grid"
-		ondragstart={handleDragStart}
-		ondragend={handleDragEnd}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-	>
+<main class="dashboard" class:compact={compactMode}>
+	<div class="dashboard-grid">
 		{@render children()}
 	</div>
 </main>

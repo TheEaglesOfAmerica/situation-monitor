@@ -53,9 +53,6 @@
 	let onboardingOpen = $state(false);
 	let editingMonitor = $state<CustomMonitor | null>(null);
 
-	// Edit mode for panel rearrangement
-	let editMode = $state(false);
-
 	// Compact mode for reduced padding
 	let compactMode = $state(false);
 
@@ -252,10 +249,8 @@
 				handleCollapseAllToggle();
 				break;
 			case 'escape':
-				// Exit edit mode or close modals
-				if (editMode) {
-					editMode = false;
-				} else if (settingsOpen) {
+				// Exit modals
+				if (settingsOpen) {
 					settingsOpen = false;
 				}
 				break;
@@ -299,8 +294,6 @@
 	<Header 
 		onRefresh={handleRefresh} 
 		onSettingsClick={() => (settingsOpen = true)} 
-		{editMode}
-		onEditModeToggle={handleEditModeToggle}
 		{compactMode}
 		onCompactModeToggle={handleCompactModeToggle}
 		{allPanelsCollapsed}
@@ -310,70 +303,70 @@
 	/>
 
 	<main class="main-content" class:compact={compactMode}>
-		<Dashboard {editMode} {compactMode}>
+		<Dashboard {compactMode}>
 			<!-- Panels rendered in order specified by settings.order -->
 			{#each $settings.order as panelId (panelId)}
 				{#if isPanelVisible(panelId)}
 					{#if panelId === 'map'}
-						<div class="panel-slot map-slot" data-panel-id="map" draggable={editMode}>
+						<div class="panel-slot map-slot" data-panel-id="map">
 							<MapPanel monitors={$monitors.monitors} />
 						</div>
 					{:else if panelId === 'realtime'}
-						<div class="panel-slot" data-panel-id="realtime" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="realtime">
 							<RealtimePanel news={allNewsItems} />
 						</div>
 					{:else if panelId === 'politics'}
-						<div class="panel-slot" data-panel-id="politics" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="politics">
 							<NewsPanel category="politics" panelId="politics" title="Politics" />
 						</div>
 					{:else if panelId === 'tech'}
-						<div class="panel-slot" data-panel-id="tech" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="tech">
 							<NewsPanel category="tech" panelId="tech" title="Tech" />
 						</div>
 					{:else if panelId === 'finance'}
-						<div class="panel-slot" data-panel-id="finance" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="finance">
 							<NewsPanel category="finance" panelId="finance" title="Finance" />
 						</div>
 					{:else if panelId === 'gov'}
-						<div class="panel-slot" data-panel-id="gov" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="gov">
 							<NewsPanel category="gov" panelId="gov" title="Government" />
 						</div>
 					{:else if panelId === 'ai'}
-						<div class="panel-slot" data-panel-id="ai" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="ai">
 							<NewsPanel category="ai" panelId="ai" title="AI" />
 						</div>
 
 					{:else if panelId === 'markets'}
-						<div class="panel-slot" data-panel-id="markets" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="markets">
 							<MarketsPanel />
 						</div>
 					{:else if panelId === 'heatmap'}
-						<div class="panel-slot" data-panel-id="heatmap" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="heatmap">
 							<HeatmapPanel />
 						</div>
 					{:else if panelId === 'commodities'}
-						<div class="panel-slot" data-panel-id="commodities" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="commodities">
 							<CommoditiesPanel />
 						</div>
 					{:else if panelId === 'crypto'}
-						<div class="panel-slot" data-panel-id="crypto" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="crypto">
 							<CryptoPanel />
 						</div>
 
 					{:else if panelId === 'mainchar'}
-						<div class="panel-slot" data-panel-id="mainchar" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="mainchar">
 							<MainCharPanel />
 						</div>
 					{:else if panelId === 'correlation'}
-						<div class="panel-slot" data-panel-id="correlation" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="correlation">
 							<CorrelationPanel />
 						</div>
 					{:else if panelId === 'narrative'}
-						<div class="panel-slot" data-panel-id="narrative" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="narrative">
 							<NarrativePanel news={allNewsItems} />
 						</div>
 					{:else if panelId === 'monitors'}
-						<div class="panel-slot" data-panel-id="monitors" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="monitors">
 							<MonitorsPanel
 								monitors={$monitors.monitors}
 								matches={$monitors.matches}
@@ -384,11 +377,11 @@
 							/>
 						</div>
 					{:else if panelId === 'intel'}
-						<div class="panel-slot" data-panel-id="intel" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="intel">
 							<IntelPanel />
 						</div>
 					{:else if panelId === 'venezuela'}
-						<div class="panel-slot" data-panel-id="venezuela" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="venezuela">
 							<SituationPanel
 								panelId="venezuela"
 								config={{
@@ -404,7 +397,7 @@
 							/>
 						</div>
 					{:else if panelId === 'greenland'}
-						<div class="panel-slot" data-panel-id="greenland" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="greenland">
 							<SituationPanel
 								panelId="greenland"
 								config={{
@@ -420,7 +413,7 @@
 							/>
 						</div>
 					{:else if panelId === 'iran'}
-						<div class="panel-slot" data-panel-id="iran" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="iran">
 							<SituationPanel
 								panelId="iran"
 								config={{
@@ -448,19 +441,19 @@
 							/>
 						</div>
 					{:else if panelId === 'whale'}
-						<div class="panel-slot" data-panel-id="whale" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="whale">
 							<WhalePanel transactions={whales} />
 						</div>
 					{:else if panelId === 'polymarket'}
-						<div class="panel-slot" data-panel-id="polymarket" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="polymarket">
 							<PolymarketPanel predictions={predictions} />
 						</div>
 					{:else if panelId === 'contracts'}
-						<div class="panel-slot" data-panel-id="contracts" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="contracts">
 							<ContractsPanel contracts={contracts} />
 						</div>
 					{:else if panelId === 'layoffs'}
-						<div class="panel-slot" data-panel-id="layoffs" draggable={editMode}>
+						<div class="panel-slot" data-panel-id="layoffs">
 							<LayoffsPanel layoffs={layoffs} />
 						</div>
 					{/if}

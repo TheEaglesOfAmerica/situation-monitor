@@ -12,8 +12,6 @@
 	interface Props {
 		onRefresh?: () => void;
 		onSettingsClick?: () => void;
-		editMode?: boolean;
-		onEditModeToggle?: () => void;
 		compactMode?: boolean;
 		onCompactModeToggle?: () => void;
 		allPanelsCollapsed?: boolean;
@@ -22,7 +20,7 @@
 		onVisibilityDropdownToggle?: () => void;
 	}
 
-	let { onRefresh, onSettingsClick, editMode = false, onEditModeToggle, compactMode = false, onCompactModeToggle, allPanelsCollapsed = false, onCollapseAllToggle, visibilityDropdownOpen = false, onVisibilityDropdownToggle }: Props = $props();
+	let { onRefresh, onSettingsClick, compactMode = false, onCompactModeToggle, allPanelsCollapsed = false, onCollapseAllToggle, visibilityDropdownOpen = false, onVisibilityDropdownToggle }: Props = $props();
 
 	// Notification state
 	let notificationsOn = $state(false);
@@ -163,17 +161,6 @@
 		>
 			<span class="btn-icon">{notificationsOn ? '🔔' : '🔕'}</span>
 			<span class="btn-label">{notificationsOn ? 'Alerts' : 'Alerts'}</span>
-		</button>
-
-		<!-- Edit Mode Toggle -->
-		<button
-			class="header-btn"
-			class:active={editMode}
-			onclick={onEditModeToggle}
-			title={editMode ? 'Done editing' : 'Rearrange panels'}
-		>
-			<span class="btn-icon">{editMode ? '✓' : '✎'}</span>
-			<span class="btn-label">{editMode ? 'Done' : 'Edit'}</span>
 		</button>
 
 		<button
