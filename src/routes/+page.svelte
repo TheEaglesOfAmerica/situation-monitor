@@ -326,140 +326,114 @@
 							<CryptoPanel />
 						</div>
 
-			<!-- Analysis Panels -->
-			{#if isPanelVisible('mainchar')}
-				<div class="panel-slot" data-panel-id="mainchar" draggable={editMode}>
-					<MainCharPanel />
-				</div>
+					{:else if panelId === 'mainchar'}
+						<div class="panel-slot" data-panel-id="mainchar" draggable={editMode}>
+							<MainCharPanel />
+						</div>
+					{:else if panelId === 'correlation'}
+						<div class="panel-slot" data-panel-id="correlation" draggable={editMode}>
+							<CorrelationPanel />
+						</div>
+					{:else if panelId === 'narrative'}
+						<div class="panel-slot" data-panel-id="narrative" draggable={editMode}>
+							<NarrativePanel news={allNewsItems} />
+						</div>
+					{:else if panelId === 'monitors'}
+						<div class="panel-slot" data-panel-id="monitors" draggable={editMode}>
+							<MonitorsPanel
+								monitors={$monitors.monitors}
+								matches={$monitors.matches}
+								onCreateMonitor={handleCreateMonitor}
+								onEditMonitor={handleEditMonitor}
+								onDeleteMonitor={handleDeleteMonitor}
+								onToggleMonitor={handleToggleMonitor}
+							/>
+						</div>
+					{:else if panelId === 'intel'}
+						<div class="panel-slot" data-panel-id="intel" draggable={editMode}>
+							<IntelPanel />
+						</div>
+					{:else if panelId === 'venezuela'}
+						<div class="panel-slot" data-panel-id="venezuela" draggable={editMode}>
+							<SituationPanel
+								panelId="venezuela"
+								config={{
+									title: 'Venezuela Watch',
+									subtitle: 'Humanitarian crisis monitoring',
+									criticalKeywords: ['maduro', 'caracas', 'venezuela', 'guaido']
+								}}
+								news={allNewsItems.filter(
+									(n) =>
+										n.title.toLowerCase().includes('venezuela') ||
+										n.title.toLowerCase().includes('maduro')
+								)}
+							/>
+						</div>
+					{:else if panelId === 'greenland'}
+						<div class="panel-slot" data-panel-id="greenland" draggable={editMode}>
+							<SituationPanel
+								panelId="greenland"
+								config={{
+									title: 'Greenland Watch',
+									subtitle: 'Arctic geopolitics monitoring',
+									criticalKeywords: ['greenland', 'arctic', 'nuuk', 'denmark']
+								}}
+								news={allNewsItems.filter(
+									(n) =>
+										n.title.toLowerCase().includes('greenland') ||
+										n.title.toLowerCase().includes('arctic')
+								)}
+							/>
+						</div>
+					{:else if panelId === 'iran'}
+						<div class="panel-slot" data-panel-id="iran" draggable={editMode}>
+							<SituationPanel
+								panelId="iran"
+								config={{
+									title: 'Iran Crisis',
+									subtitle: 'Revolution protests, regime instability & nuclear program',
+									criticalKeywords: [
+										'protest',
+										'uprising',
+										'revolution',
+										'crackdown',
+										'killed',
+										'nuclear',
+										'strike',
+										'attack',
+										'irgc',
+										'khamenei'
+									]
+								}}
+								news={allNewsItems.filter(
+									(n) =>
+										n.title.toLowerCase().includes('iran') ||
+										n.title.toLowerCase().includes('tehran') ||
+										n.title.toLowerCase().includes('irgc')
+								)}
+							/>
+						</div>
+					{:else if panelId === 'whale'}
+						<div class="panel-slot" data-panel-id="whale" draggable={editMode}>
+							<WhalePanel transactions={whales} />
+						</div>
+					{:else if panelId === 'polymarket'}
+						<div class="panel-slot" data-panel-id="polymarket" draggable={editMode}>
+							<PolymarketPanel predictions={predictions} />
+						</div>
+					{:else if panelId === 'contracts'}
+						<div class="panel-slot" data-panel-id="contracts" draggable={editMode}>
+							<ContractsPanel contracts={contracts} />
+						</div>
+					{:else if panelId === 'layoffs'}
+						<div class="panel-slot" data-panel-id="layoffs" draggable={editMode}>
+							<LayoffsPanel layoffs={layoffs} />
+						</div>
+					{/if}
 			{/if}
-
-			{#if isPanelVisible('correlation')}
-				<div class="panel-slot" data-panel-id="correlation" draggable={editMode}>
-					<CorrelationPanel news={allNewsItems} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('narrative')}
-				<div class="panel-slot" data-panel-id="narrative" draggable={editMode}>
-					<NarrativePanel news={allNewsItems} />
-				</div>
-			{/if}
-
-			<!-- Custom Monitors -->
-			{#if isPanelVisible('monitors')}
-				<div class="panel-slot" data-panel-id="monitors" draggable={editMode}>
-					<MonitorsPanel
-						monitors={$monitors.monitors}
-						matches={$monitors.matches}
-						onCreateMonitor={handleCreateMonitor}
-						onEditMonitor={handleEditMonitor}
-						onDeleteMonitor={handleDeleteMonitor}
-						onToggleMonitor={handleToggleMonitor}
-					/>
-				</div>
-			{/if}
-
-			<!-- Intel Panel -->
-			{#if isPanelVisible('intel')}
-				<div class="panel-slot" data-panel-id="intel" draggable={editMode}>
-					<IntelPanel />
-				</div>
-			{/if}
-
-			<!-- Situation Panels -->
-			{#if isPanelVisible('venezuela')}
-				<div class="panel-slot" data-panel-id="venezuela" draggable={editMode}>
-					<SituationPanel
-						panelId="venezuela"
-						config={{
-							title: 'Venezuela Watch',
-							subtitle: 'Humanitarian crisis monitoring',
-							criticalKeywords: ['maduro', 'caracas', 'venezuela', 'guaido']
-						}}
-						news={allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('venezuela') ||
-								n.title.toLowerCase().includes('maduro')
-						)}
-					/>
-				</div>
-			{/if}
-
-			{#if isPanelVisible('greenland')}
-				<div class="panel-slot" data-panel-id="greenland" draggable={editMode}>
-					<SituationPanel
-						panelId="greenland"
-						config={{
-							title: 'Greenland Watch',
-							subtitle: 'Arctic geopolitics monitoring',
-							criticalKeywords: ['greenland', 'arctic', 'nuuk', 'denmark']
-						}}
-						news={allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('greenland') ||
-								n.title.toLowerCase().includes('arctic')
-						)}
-					/>
-				</div>
-			{/if}
-
-			{#if isPanelVisible('iran')}
-				<div class="panel-slot" data-panel-id="iran" draggable={editMode}>
-					<SituationPanel
-						panelId="iran"
-						config={{
-							title: 'Iran Crisis',
-							subtitle: 'Revolution protests, regime instability & nuclear program',
-							criticalKeywords: [
-								'protest',
-								'uprising',
-								'revolution',
-								'crackdown',
-								'killed',
-								'nuclear',
-								'strike',
-								'attack',
-								'irgc',
-								'khamenei'
-							]
-						}}
-						news={allNewsItems.filter(
-							(n) =>
-								n.title.toLowerCase().includes('iran') ||
-								n.title.toLowerCase().includes('tehran') ||
-								n.title.toLowerCase().includes('irgc')
-						)}
-					/>
-				</div>
-			{/if}
-
-			<!-- Placeholder panels for additional data sources -->
-			{#if isPanelVisible('whales')}
-				<div class="panel-slot" data-panel-id="whales" draggable={editMode}>
-					<WhalePanel {whales} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('polymarket')}
-				<div class="panel-slot" data-panel-id="polymarket" draggable={editMode}>
-					<PolymarketPanel {predictions} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('contracts')}
-				<div class="panel-slot" data-panel-id="contracts" draggable={editMode}>
-					<ContractsPanel {contracts} />
-				</div>
-			{/if}
-
-			{#if isPanelVisible('layoffs')}
-				<div class="panel-slot" data-panel-id="layoffs" draggable={editMode}>
-					<LayoffsPanel {layoffs} />
-				</div>
-			{/if}
-		</Dashboard>
-	</main>
-
+		{/each}
+	</Dashboard>
+</main>
 	<!-- Modals -->
 	<SettingsModal
 		open={settingsOpen}
