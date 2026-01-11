@@ -206,29 +206,29 @@
 			}
 		});
 	}
-+
-+	const FOCUS_TARGETS = [
-+		{ label: 'Seattle', lat: 47.61, lon: -122.33, scale: 2.2 },
-+		{ label: 'Novosibirsk', lat: 55.03, lon: 82.93, scale: 2.1 },
-+		{ label: 'Sydney', lat: -33.87, lon: 151.21, scale: 2.1 }
-+	];
-+
-+	function focusOn(lon: number, lat: number, scale = 2): void {
-+		if (!projection || !zoom || !svg || !d3Module) return;
-+		const point = projection([lon, lat]);
-+		if (!point) return;
-+		const [x, y] = point;
-+		const t = d3Module.zoomIdentity
-+			.translate(WIDTH / 2 - x * scale, HEIGHT / 2 - y * scale)
-+			.scale(scale);
-+		svg.transition().duration(450).call(zoom.transform, t);
-+	}
-+
-+	function focusTarget(label: string): void {
-+		const target = FOCUS_TARGETS.find((t) => t.label === label);
-+		if (!target) return;
-+		focusOn(target.lon, target.lat, target.scale);
-+	}
+
+	const FOCUS_TARGETS = [
+		{ label: 'Seattle', lat: 47.61, lon: -122.33, scale: 2.2 },
+		{ label: 'Novosibirsk', lat: 55.03, lon: 82.93, scale: 2.1 },
+		{ label: 'Sydney', lat: -33.87, lon: 151.21, scale: 2.1 }
+	];
+
+	function focusOn(lon: number, lat: number, scale = 2): void {
+		if (!projection || !zoom || !svg || !d3Module) return;
+		const point = projection([lon, lat]);
+		if (!point) return;
+		const [x, y] = point;
+		const t = d3Module.zoomIdentity
+			.translate(WIDTH / 2 - x * scale, HEIGHT / 2 - y * scale)
+			.scale(scale);
+		svg.transition().duration(450).call(zoom.transform, t);
+	}
+
+	function focusTarget(label: string): void {
+		const target = FOCUS_TARGETS.find((t) => t.label === label);
+		if (!target) return;
+		focusOn(target.lon, target.lat, target.scale);
+	}
 
 	function toggleWeatherOverlay(): void {
 		weatherOverlayEnabled = !weatherOverlayEnabled;
@@ -752,7 +752,7 @@
 
 		<div class="map-body" bind:this={mapContainer}>
 			<svg class="map-svg"></svg>
-+			<div class="rain-overlay" class:active={weatherOverlayEnabled}></div>
+			<div class="rain-overlay" class:active={weatherOverlayEnabled}></div>
 			{#if tooltipVisible && tooltipContent}
 				<div
 					class="map-tooltip"
@@ -872,12 +872,12 @@
 		gap: 0.35rem;
 		flex-wrap: wrap;
 	}
-+
-+	.focus-row {
-+		display: flex;
-+		gap: 0.35rem;
-+		flex-wrap: wrap;
-+	}
+
+	.focus-row {
+		display: flex;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+	}
 
 	.pill-btn {
 		background: rgba(18, 46, 40, 0.8);
@@ -889,11 +889,11 @@
 		cursor: pointer;
 		transition: all 0.2s ease;
 	}
-+
-+	.pill-btn.ghost {
-+		background: rgba(18, 46, 40, 0.35);
-+		color: #b9d8cc;
-+	}
+
+	.pill-btn.ghost {
+		background: rgba(18, 46, 40, 0.35);
+		color: #b9d8cc;
+	}
 
 	.pill-btn:hover,
 	.pill-btn.active {
