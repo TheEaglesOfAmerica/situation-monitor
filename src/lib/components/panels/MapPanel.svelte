@@ -53,6 +53,14 @@
 	let selectedHotspot = $state<Hotspot | null>(null);
 	let selectedBreakdown = $state<ScoreBreakdown | null>(null);
 
+	// Filter state
+	let showCities = $state(true);
+	let filterMenuOpen = $state(false);
+	let minPopulation = $state(0.75); // in millions
+	let minThreatScore = $state(0);
+	let selectedRegions = $state<Set<string>>(new Set(['all']));
+	let selectedLevels = $state<Set<string>>(new Set(['all']));
+
 	// Zoom level state
 	let currentZoom = $state(1);
 	const MIN_ZOOM = 1;
@@ -82,6 +90,26 @@
 			.slice(0, 5);
 	}
 
+	// Get region from country name
+	function getRegionFromCountry(country: string): string {
+		const asia = ['Japan', 'China', 'India', 'South Korea', 'North Korea', 'Bangladesh', 'Pakistan', 'Philippines', 'Indonesia', 'Thailand', 'Vietnam', 'Myanmar', 'Afghanistan', 'Nepal', 'Sri Lanka', 'Kazakhstan', 'Uzbekistan', 'Taiwan', 'Malaysia', 'Singapore'];
+		const middleEast = ['Iran', 'Iraq', 'Saudi Arabia', 'UAE', 'Israel', 'Turkey', 'Syria', 'Lebanon', 'Jordan', 'Qatar', 'Kuwait', 'Yemen', 'Oman'];
+		const africa = ['Egypt', 'Algeria', 'Morocco', 'Tunisia', 'Libya', 'Nigeria', 'DR Congo', 'Kenya', 'Angola', 'Tanzania', 'Sudan', 'South Africa', 'Ethiopia', 'Ivory Coast', 'Uganda', 'Ghana', 'Senegal', 'Cameroon', 'Somalia'];
+		const europe = ['Russia', 'UK', 'France', 'Spain', 'Germany', 'Italy', 'Ukraine', 'Belgium', 'Austria', 'Poland', 'Hungary', 'Romania', 'Belarus', 'Sweden', 'Denmark', 'Netherlands', 'Greece', 'Czech Republic', 'Bulgaria', 'Serbia'];
+		const northAmerica = ['USA', 'Canada', 'Mexico', 'Cuba'];
+		const southAmerica = ['Brazil', 'Argentina', 'Peru', 'Colombia', 'Chile', 'Venezuela', 'Ecuador'];
+		const oceania = ['Australia', 'New Zealand'];
+		
+		if (asia.includes(country)) return 'Asia';
+		if (middleEast.includes(country)) return 'Middle East';
+		if (africa.includes(country)) return 'Africa';
+		if (europe.includes(country)) return 'Europe';
+		if (northAmerica.includes(country)) return 'N. America';
+		if (southAmerica.includes(country)) return 'S. America';
+		if (oceania.includes(country)) return 'Oceania';
+		return 'Other';
+	}
+
 	// Merge world cities with threat data, auto-calculate scores
 	const allCitiesWithScores = $derived(
 		WORLD_CITIES.map((city) => {
@@ -96,10 +124,30 @@
 		})
 	);
 
-	// Filter: Show cities with population >= 0.75M OR threat score >= 40
-	const visibleHotspots = $derived(
-		allCitiesWithScores.filter((city) => city.population >= 0.75 || city.emergentScore >= 40)
-	);
+	// Filter: Show cities with population >= minPop OR threat score >= minThreat
+	// Also apply region and level filters
+	const visibleHotspots = $derived(() => {
+		if (!showCities) return [];
+		
+		return allCitiesWithScores.filter((city) => {
+			// Population or threat threshold
+			const meetsThreshold = city.population >= minPopulation || city.emergentScore >= minThreatScore;
+			if (!meetsThreshold) return false;
+			
+			// Region filter
+			if (!selectedRegions.has('all')) {
+				const region = getRegionFromCountry(city.country);
+				if (!selectedRegions.has(region)) return false;
+			}
+			
+			// Threat level filter
+			if (!selectedLevels.has('all')) {
+				if (!selectedLevels.has(city.level)) return false;
+			}
+			
+			return true;
+		});
+	});
 
 	// Critical situations (score >= 70)
 	const criticalSituations = $derived(
@@ -309,6 +357,38 @@
 	function clearSelection(): void {
 		selectedHotspot = null;
 		selectedBreakdown = null;
+	}
+
+	function toggleRegion(region: string): void {
+		if (region === 'all') {
+			selectedRegions = new Set(['all']);
+		} else {
+			const newRegions = new Set(selectedRegions);
+			newRegions.delete('all');
+			if (newRegions.has(region)) {
+				newRegions.delete(region);
+			} else {
+				newRegions.add(region);
+			}
+			if (newRegions.size === 0) newRegions.add('all');
+			selectedRegions = newRegions;
+		}
+	}
+
+	function toggleLevel(level: string): void {
+		if (level === 'all') {
+			selectedLevels = new Set(['all']);
+		} else {
+			const newLevels = new Set(selectedLevels);
+			newLevels.delete('all');
+			if (newLevels.has(level)) {
+				newLevels.delete(level);
+			} else {
+				newLevels.add(level);
+			}
+			if (newLevels.size === 0) newLevels.add('all');
+			selectedLevels = newLevels;
+		}
 	}
 
 	function handleSearchSelect(hotspot: Hotspot): void {
@@ -899,6 +979,54 @@
 				</div>
 			</div>
 			<div class="topbar-actions">
+				<button class="pill-btn" class:active={showCities} onclick={() => showCities = !showCities}>
+					{showCities ? '🏙️' : '🚫'} Cities {showCities ? 'ON' : 'OFF'}
+				</button>
+				<div class="filter-dropdown">
+					<button class="pill-btn" class:active={filterMenuOpen} onclick={() => filterMenuOpen = !filterMenuOpen}>
+						🎛️ Filters
+					</button>
+					{#if filterMenuOpen}
+						<div class="filter-menu">
+							<div class="filter-section">
+								<div class="filter-label">Min Population (M)</div>
+								<input type="range" min="0" max="5" step="0.25" bind:value={minPopulation} class="filter-slider" />
+								<span class="filter-value">{minPopulation.toFixed(2)}M</span>
+							</div>
+							<div class="filter-section">
+								<div class="filter-label">Min Threat Score</div>
+								<input type="range" min="0" max="100" step="5" bind:value={minThreatScore} class="filter-slider" />
+								<span class="filter-value">{minThreatScore}</span>
+							</div>
+							<div class="filter-section">
+								<div class="filter-label">Regions</div>
+								<div class="filter-chips">
+									<button class="filter-chip" class:active={selectedRegions.has('all')} onclick={() => toggleRegion('all')}>All</button>
+									<button class="filter-chip" class:active={selectedRegions.has('Asia')} onclick={() => toggleRegion('Asia')}>Asia</button>
+									<button class="filter-chip" class:active={selectedRegions.has('Europe')} onclick={() => toggleRegion('Europe')}>Europe</button>
+									<button class="filter-chip" class:active={selectedRegions.has('Middle East')} onclick={() => toggleRegion('Middle East')}>Middle East</button>
+									<button class="filter-chip" class:active={selectedRegions.has('Africa')} onclick={() => toggleRegion('Africa')}>Africa</button>
+									<button class="filter-chip" class:active={selectedRegions.has('N. America')} onclick={() => toggleRegion('N. America')}>N. America</button>
+									<button class="filter-chip" class:active={selectedRegions.has('S. America')} onclick={() => toggleRegion('S. America')}>S. America</button>
+									<button class="filter-chip" class:active={selectedRegions.has('Oceania')} onclick={() => toggleRegion('Oceania')}>Oceania</button>
+								</div>
+							</div>
+							<div class="filter-section">
+								<div class="filter-label">Threat Levels</div>
+								<div class="filter-chips">
+									<button class="filter-chip" class:active={selectedLevels.has('all')} onclick={() => toggleLevel('all')}>All</button>
+									<button class="filter-chip critical" class:active={selectedLevels.has('critical')} onclick={() => toggleLevel('critical')}>Critical</button>
+									<button class="filter-chip high" class:active={selectedLevels.has('high')} onclick={() => toggleLevel('high')}>High</button>
+									<button class="filter-chip elevated" class:active={selectedLevels.has('elevated')} onclick={() => toggleLevel('elevated')}>Elevated</button>
+									<button class="filter-chip low" class:active={selectedLevels.has('low')} onclick={() => toggleLevel('low')}>Low</button>
+								</div>
+							</div>
+							<div class="filter-stats">
+								Showing {visibleHotspots().length} of {allCitiesWithScores.length} cities
+							</div>
+						</div>
+					{/if}
+				</div>
 				<div class="region-btns">
 					{#each FOCUS_TARGETS as target}
 						<button class="region-btn" onclick={() => focusTarget(target.label)}>
@@ -1838,6 +1966,138 @@
 	.weather-meta {
 		font-size: 0.58rem;
 		color: #7a9c90;
+	}
+
+	/* Filter Dropdown */
+	.filter-dropdown {
+		position: relative;
+	}
+
+	.filter-menu {
+		position: absolute;
+		top: calc(100% + 0.5rem);
+		right: 0;
+		background: rgba(10, 16, 14, 0.98);
+		border: 1px solid #2c4f45;
+		border-radius: 8px;
+		padding: 1rem;
+		min-width: 320px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		z-index: 100;
+		backdrop-filter: blur(12px);
+	}
+
+	.filter-section {
+		margin-bottom: 1rem;
+	}
+
+	.filter-section:last-child {
+		margin-bottom: 0;
+	}
+
+	.filter-label {
+		font-size: 0.7rem;
+		color: #8ad1bd;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: 0.5rem;
+		font-weight: 600;
+	}
+
+	.filter-slider {
+		width: 100%;
+		height: 4px;
+		appearance: none;
+		background: rgba(70, 190, 167, 0.2);
+		border-radius: 2px;
+		cursor: pointer;
+		margin-bottom: 0.25rem;
+	}
+
+	.filter-slider::-webkit-slider-thumb {
+		appearance: none;
+		width: 14px;
+		height: 14px;
+		background: #46bea7;
+		border-radius: 50%;
+		cursor: grab;
+		transition: transform 0.15s ease;
+	}
+
+	.filter-slider::-webkit-slider-thumb:hover {
+		transform: scale(1.2);
+	}
+
+	.filter-value {
+		display: inline-block;
+		font-size: 0.7rem;
+		color: #e8f7f0;
+		background: rgba(70, 190, 167, 0.15);
+		padding: 0.15rem 0.4rem;
+		border-radius: 4px;
+		font-weight: 600;
+	}
+
+	.filter-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+
+	.filter-chip {
+		padding: 0.35rem 0.65rem;
+		font-size: 0.65rem;
+		border: 1px solid #1f3c34;
+		border-radius: 4px;
+		background: rgba(18, 30, 26, 0.7);
+		color: #9fb6ad;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.filter-chip:hover {
+		background: rgba(33, 70, 60, 0.8);
+		border-color: #2c4f45;
+	}
+
+	.filter-chip.active {
+		background: rgba(70, 190, 167, 0.25);
+		border-color: #46bea7;
+		color: #e8f7f0;
+	}
+
+	.filter-chip.critical.active {
+		background: rgba(255, 34, 34, 0.25);
+		border-color: #ff2222;
+		color: #ff8866;
+	}
+
+	.filter-chip.high.active {
+		background: rgba(255, 68, 68, 0.25);
+		border-color: #ff4444;
+		color: #ff8866;
+	}
+
+	.filter-chip.elevated.active {
+		background: rgba(255, 204, 0, 0.25);
+		border-color: #ffcc00;
+		color: #ffdd66;
+	}
+
+	.filter-chip.low.active {
+		background: rgba(0, 255, 136, 0.25);
+		border-color: #00ff88;
+		color: #66ffaa;
+	}
+
+	.filter-stats {
+		margin-top: 0.75rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid #1f3c34;
+		font-size: 0.7rem;
+		color: #8bb5a7;
+		text-align: center;
+		font-weight: 600;
 	}
 
 	/* Pulse animation for hotspots */
