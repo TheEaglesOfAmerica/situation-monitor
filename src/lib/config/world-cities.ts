@@ -1,0 +1,168 @@
+/**
+ * Comprehensive world cities data
+ * Population in millions, coordinates, threat assessment
+ */
+
+export interface WorldCity {
+	name: string;
+	country: string;
+	lat: number;
+	lon: number;
+	population: number; // in millions
+	level?: 'critical' | 'high' | 'elevated' | 'low';
+	desc?: string;
+	reasons?: string[];
+}
+
+export const WORLD_CITIES: WorldCity[] = [
+	// ASIA-PACIFIC (Population > 0.75M)
+	{ name: 'Tokyo', country: 'Japan', lat: 35.68, lon: 139.76, population: 37.4, level: 'low' },
+	{ name: 'Delhi', country: 'India', lat: 28.6, lon: 77.2, population: 32.9, level: 'low' },
+	{ name: 'Shanghai', country: 'China', lat: 31.23, lon: 121.47, population: 28.5, level: 'low' },
+	{ name: 'Beijing', country: 'China', lat: 39.9, lon: 116.4, population: 21.5, level: 'elevated' },
+	{ name: 'Mumbai', country: 'India', lat: 19.08, lon: 72.88, population: 20.7, level: 'low' },
+	{ name: 'Osaka', country: 'Japan', lat: 34.69, lon: 135.5, population: 19.1, level: 'low' },
+	{ name: 'Dhaka', country: 'Bangladesh', lat: 23.81, lon: 90.41, population: 22.4, level: 'elevated' },
+	{ name: 'Karachi', country: 'Pakistan', lat: 24.86, lon: 67.01, population: 16.8, level: 'elevated' },
+	{ name: 'Kolkata', country: 'India', lat: 22.57, lon: 88.36, population: 15.1, level: 'low' },
+	{ name: 'Manila', country: 'Philippines', lat: 14.6, lon: 120.98, population: 14.4, level: 'elevated' },
+	{ name: 'Guangzhou', country: 'China', lat: 23.13, lon: 113.26, population: 13.5, level: 'low' },
+	{ name: 'Seoul', country: 'South Korea', lat: 37.57, lon: 126.98, population: 9.8, level: 'elevated' },
+	{ name: 'Shenzhen', country: 'China', lat: 22.54, lon: 114.05, population: 12.4, level: 'low' },
+	{ name: 'Jakarta', country: 'Indonesia', lat: -6.21, lon: 106.85, population: 11.1, level: 'low' },
+	{ name: 'Bangkok', country: 'Thailand', lat: 13.76, lon: 100.5, population: 11.0, level: 'low' },
+	{ name: 'Bangalore', country: 'India', lat: 12.97, lon: 77.59, population: 13.7, level: 'low' },
+	{ name: 'Chennai', country: 'India', lat: 13.08, lon: 80.27, population: 11.5, level: 'low' },
+	{ name: 'Hyderabad', country: 'India', lat: 17.38, lon: 78.48, population: 10.5, level: 'low' },
+	{ name: 'Chengdu', country: 'China', lat: 30.67, lon: 104.07, population: 11.3, level: 'low' },
+	{ name: 'Lahore', country: 'Pakistan', lat: 31.55, lon: 74.35, population: 13.1, level: 'elevated' },
+	{ name: 'Tianjin', country: 'China', lat: 39.13, lon: 117.2, population: 13.9, level: 'low' },
+	{ name: 'Chongqing', country: 'China', lat: 29.56, lon: 106.55, population: 16.4, level: 'low' },
+	{ name: 'Wuhan', country: 'China', lat: 30.59, lon: 114.31, population: 8.9, level: 'low' },
+	{ name: 'Hong Kong', country: 'China', lat: 22.32, lon: 114.17, population: 7.5, level: 'elevated' },
+	{ name: 'Singapore', country: 'Singapore', lat: 1.35, lon: 103.82, population: 5.9, level: 'low' },
+	{ name: 'Taipei', country: 'Taiwan', lat: 25.03, lon: 121.5, population: 2.7, level: 'elevated' },
+	{ name: 'Kuala Lumpur', country: 'Malaysia', lat: 3.14, lon: 101.69, population: 8.6, level: 'low' },
+	{ name: 'Hanoi', country: 'Vietnam', lat: 21.03, lon: 105.85, population: 8.2, level: 'low' },
+	{ name: 'Ho Chi Minh City', country: 'Vietnam', lat: 10.82, lon: 106.63, population: 9.3, level: 'low' },
+	{ name: 'Yangon', country: 'Myanmar', lat: 16.87, lon: 96.2, population: 5.4, level: 'high' },
+	{ name: 'Pyongyang', country: 'North Korea', lat: 39.03, lon: 125.75, population: 3.0, level: 'high' },
+	{ name: 'Kabul', country: 'Afghanistan', lat: 34.53, lon: 69.17, population: 4.6, level: 'high' },
+	{ name: 'Islamabad', country: 'Pakistan', lat: 33.69, lon: 73.06, population: 1.1, level: 'elevated' },
+	{ name: 'Kathmandu', country: 'Nepal', lat: 27.7, lon: 85.32, population: 1.5, level: 'low' },
+	{ name: 'Colombo', country: 'Sri Lanka', lat: 6.93, lon: 79.85, population: 0.75, level: 'low' },
+	{ name: 'Almaty', country: 'Kazakhstan', lat: 43.24, lon: 76.95, population: 2.0, level: 'low' },
+	{ name: 'Tashkent', country: 'Uzbekistan', lat: 41.3, lon: 69.27, population: 2.6, level: 'low' },
+
+	// MIDDLE EAST & NORTH AFRICA
+	{ name: 'Tehran', country: 'Iran', lat: 35.7, lon: 51.4, population: 9.1, level: 'critical' },
+	{ name: 'Baghdad', country: 'Iraq', lat: 33.31, lon: 44.37, population: 7.7, level: 'elevated' },
+	{ name: 'Riyadh', country: 'Saudi Arabia', lat: 24.7, lon: 46.7, population: 7.7, level: 'elevated' },
+	{ name: 'Dubai', country: 'UAE', lat: 25.2, lon: 55.27, population: 3.6, level: 'low' },
+	{ name: 'Tel Aviv', country: 'Israel', lat: 32.07, lon: 34.78, population: 4.4, level: 'high' },
+	{ name: 'Cairo', country: 'Egypt', lat: 30.04, lon: 31.24, population: 21.3, level: 'elevated' },
+	{ name: 'Istanbul', country: 'Turkey', lat: 41.01, lon: 28.98, population: 15.8, level: 'elevated' },
+	{ name: 'Ankara', country: 'Turkey', lat: 39.93, lon: 32.86, population: 5.7, level: 'low' },
+	{ name: 'Damascus', country: 'Syria', lat: 33.51, lon: 36.29, population: 2.3, level: 'high' },
+	{ name: 'Beirut', country: 'Lebanon', lat: 33.89, lon: 35.5, population: 2.4, level: 'high' },
+	{ name: 'Amman', country: 'Jordan', lat: 31.95, lon: 35.93, population: 2.2, level: 'elevated' },
+	{ name: 'Jerusalem', country: 'Israel', lat: 31.77, lon: 35.23, population: 0.94, level: 'high' },
+	{ name: 'Jeddah', country: 'Saudi Arabia', lat: 21.49, lon: 39.19, population: 4.7, level: 'low' },
+	{ name: 'Abu Dhabi', country: 'UAE', lat: 24.47, lon: 54.37, population: 1.5, level: 'low' },
+	{ name: 'Doha', country: 'Qatar', lat: 25.29, lon: 51.53, population: 2.4, level: 'low' },
+	{ name: 'Kuwait City', country: 'Kuwait', lat: 29.37, lon: 47.98, population: 3.0, level: 'low' },
+	{ name: 'Sanaa', country: 'Yemen', lat: 15.35, lon: 44.21, population: 2.9, level: 'high' },
+	{ name: 'Muscat', country: 'Oman', lat: 23.59, lon: 58.41, population: 1.6, level: 'low' },
+	{ name: 'Algiers', country: 'Algeria', lat: 36.75, lon: 3.04, population: 2.8, level: 'low' },
+	{ name: 'Casablanca', country: 'Morocco', lat: 33.57, lon: -7.59, population: 3.8, level: 'low' },
+	{ name: 'Tunis', country: 'Tunisia', lat: 36.8, lon: 10.18, population: 2.3, level: 'low' },
+	{ name: 'Tripoli', country: 'Libya', lat: 32.89, lon: 13.19, population: 1.2, level: 'high' },
+
+	// SUB-SAHARAN AFRICA
+	{ name: 'Lagos', country: 'Nigeria', lat: 6.46, lon: 3.39, population: 15.4, level: 'low' },
+	{ name: 'Kinshasa', country: 'DR Congo', lat: -4.44, lon: 15.27, population: 15.6, level: 'elevated' },
+	{ name: 'Nairobi', country: 'Kenya', lat: -1.29, lon: 36.82, population: 5.1, level: 'low' },
+	{ name: 'Luanda', country: 'Angola', lat: -8.84, lon: 13.23, population: 8.9, level: 'low' },
+	{ name: 'Dar es Salaam', country: 'Tanzania', lat: -6.79, lon: 39.21, population: 7.4, level: 'low' },
+	{ name: 'Khartoum', country: 'Sudan', lat: 15.5, lon: 32.56, population: 6.2, level: 'critical' },
+	{ name: 'Johannesburg', country: 'South Africa', lat: -26.2, lon: 28.04, population: 6.0, level: 'low' },
+	{ name: 'Addis Ababa', country: 'Ethiopia', lat: 9.03, lon: 38.74, population: 5.2, level: 'elevated' },
+	{ name: 'Abidjan', country: 'Ivory Coast', lat: 5.36, lon: -4.01, population: 5.5, level: 'low' },
+	{ name: 'Kano', country: 'Nigeria', lat: 12.0, lon: 8.52, population: 4.1, level: 'elevated' },
+	{ name: 'Kampala', country: 'Uganda', lat: 0.35, lon: 32.58, population: 3.6, level: 'low' },
+	{ name: 'Accra', country: 'Ghana', lat: 5.56, lon: -0.2, population: 2.5, level: 'low' },
+	{ name: 'Dakar', country: 'Senegal', lat: 14.72, lon: -17.47, population: 3.1, level: 'low' },
+	{ name: 'Cape Town', country: 'South Africa', lat: -33.92, lon: 18.42, population: 4.7, level: 'low' },
+	{ name: 'Douala', country: 'Cameroon', lat: 4.05, lon: 9.7, population: 3.7, level: 'low' },
+	{ name: 'Mogadishu', country: 'Somalia', lat: 2.04, lon: 45.34, population: 2.6, level: 'critical' },
+
+	// EUROPE
+	{ name: 'Moscow', country: 'Russia', lat: 55.75, lon: 37.6, population: 12.6, level: 'elevated' },
+	{ name: 'London', country: 'UK', lat: 51.5, lon: -0.12, population: 9.6, level: 'low' },
+	{ name: 'Paris', country: 'France', lat: 48.86, lon: 2.35, population: 11.2, level: 'low' },
+	{ name: 'Madrid', country: 'Spain', lat: 40.42, lon: -3.7, population: 6.7, level: 'low' },
+	{ name: 'Barcelona', country: 'Spain', lat: 41.38, lon: 2.17, population: 5.6, level: 'low' },
+	{ name: 'Berlin', country: 'Germany', lat: 52.52, lon: 13.41, population: 3.6, level: 'low' },
+	{ name: 'Rome', country: 'Italy', lat: 41.9, lon: 12.5, population: 4.3, level: 'low' },
+	{ name: 'Milan', country: 'Italy', lat: 45.46, lon: 9.19, population: 3.1, level: 'low' },
+	{ name: 'Kyiv', country: 'Ukraine', lat: 50.45, lon: 30.5, population: 2.95, level: 'critical' },
+	{ name: 'Brussels', country: 'Belgium', lat: 50.85, lon: 4.35, population: 2.1, level: 'low' },
+	{ name: 'Vienna', country: 'Austria', lat: 48.21, lon: 16.37, population: 1.93, level: 'low' },
+	{ name: 'Hamburg', country: 'Germany', lat: 53.55, lon: 10.0, population: 1.85, level: 'low' },
+	{ name: 'Warsaw', country: 'Poland', lat: 52.23, lon: 21.01, population: 1.86, level: 'elevated' },
+	{ name: 'Budapest', country: 'Hungary', lat: 47.5, lon: 19.04, population: 1.77, level: 'low' },
+	{ name: 'Bucharest', country: 'Romania', lat: 44.43, lon: 26.1, population: 1.88, level: 'elevated' },
+	{ name: 'Minsk', country: 'Belarus', lat: 53.9, lon: 27.57, population: 2.0, level: 'elevated' },
+	{ name: 'Stockholm', country: 'Sweden', lat: 59.33, lon: 18.07, population: 1.68, level: 'low' },
+	{ name: 'Copenhagen', country: 'Denmark', lat: 55.68, lon: 12.57, population: 1.35, level: 'low' },
+	{ name: 'Amsterdam', country: 'Netherlands', lat: 52.37, lon: 4.9, population: 1.17, level: 'low' },
+	{ name: 'Athens', country: 'Greece', lat: 37.98, lon: 23.73, population: 3.15, level: 'low' },
+	{ name: 'Prague', country: 'Czech Republic', lat: 50.08, lon: 14.44, population: 1.32, level: 'low' },
+	{ name: 'Sofia', country: 'Bulgaria', lat: 42.7, lon: 23.32, population: 1.28, level: 'low' },
+	{ name: 'Belgrade', country: 'Serbia', lat: 44.79, lon: 20.45, population: 1.4, level: 'low' },
+	{ name: 'St Petersburg', country: 'Russia', lat: 59.94, lon: 30.31, population: 5.6, level: 'low' },
+	{ name: 'Novosibirsk', country: 'Russia', lat: 55.03, lon: 82.93, population: 1.6, level: 'elevated' },
+
+	// NORTH AMERICA
+	{ name: 'Mexico City', country: 'Mexico', lat: 19.43, lon: -99.13, population: 22.1, level: 'low' },
+	{ name: 'New York', country: 'USA', lat: 40.71, lon: -74.01, population: 18.8, level: 'low' },
+	{ name: 'Los Angeles', country: 'USA', lat: 34.05, lon: -118.24, population: 12.5, level: 'low' },
+	{ name: 'Chicago', country: 'USA', lat: 41.88, lon: -87.63, population: 8.9, level: 'low' },
+	{ name: 'Toronto', country: 'Canada', lat: 43.65, lon: -79.38, population: 6.3, level: 'low' },
+	{ name: 'Washington DC', country: 'USA', lat: 38.9, lon: -77.0, population: 5.4, level: 'low' },
+	{ name: 'Houston', country: 'USA', lat: 29.76, lon: -95.37, population: 5.3, level: 'low' },
+	{ name: 'Dallas', country: 'USA', lat: 32.78, lon: -96.8, population: 5.7, level: 'low' },
+	{ name: 'Miami', country: 'USA', lat: 25.76, lon: -80.19, population: 6.2, level: 'low' },
+	{ name: 'Philadelphia', country: 'USA', lat: 39.95, lon: -75.17, population: 5.7, level: 'low' },
+	{ name: 'Atlanta', country: 'USA', lat: 33.75, lon: -84.39, population: 5.1, level: 'low' },
+	{ name: 'Phoenix', country: 'USA', lat: 33.45, lon: -112.07, population: 4.5, level: 'low' },
+	{ name: 'Boston', country: 'USA', lat: 42.36, lon: -71.06, population: 4.3, level: 'low' },
+	{ name: 'San Francisco', country: 'USA', lat: 37.77, lon: -122.42, population: 4.7, level: 'low' },
+	{ name: 'Seattle', country: 'USA', lat: 47.61, lon: -122.33, population: 3.4, level: 'low' },
+	{ name: 'Montreal', country: 'Canada', lat: 45.5, lon: -73.57, population: 4.3, level: 'low' },
+	{ name: 'Vancouver', country: 'Canada', lat: 49.28, lon: -123.12, population: 2.6, level: 'low' },
+	{ name: 'Guadalajara', country: 'Mexico', lat: 20.67, lon: -103.35, population: 5.3, level: 'low' },
+	{ name: 'Monterrey', country: 'Mexico', lat: 25.67, lon: -100.32, population: 5.3, level: 'low' },
+	{ name: 'Havana', country: 'Cuba', lat: 23.11, lon: -82.37, population: 2.1, level: 'elevated' },
+
+	// SOUTH AMERICA
+	{ name: 'São Paulo', country: 'Brazil', lat: -23.55, lon: -46.63, population: 22.6, level: 'low' },
+	{ name: 'Buenos Aires', country: 'Argentina', lat: -34.6, lon: -58.38, population: 15.4, level: 'low' },
+	{ name: 'Rio de Janeiro', country: 'Brazil', lat: -22.91, lon: -43.17, population: 13.7, level: 'low' },
+	{ name: 'Lima', country: 'Peru', lat: -12.05, lon: -77.04, population: 11.2, level: 'elevated' },
+	{ name: 'Bogotá', country: 'Colombia', lat: 4.71, lon: -74.07, population: 11.3, level: 'elevated' },
+	{ name: 'Santiago', country: 'Chile', lat: -33.45, lon: -70.67, population: 6.8, level: 'low' },
+	{ name: 'Belo Horizonte', country: 'Brazil', lat: -19.92, lon: -43.94, population: 6.1, level: 'low' },
+	{ name: 'Caracas', country: 'Venezuela', lat: 10.5, lon: -66.9, population: 2.9, level: 'high' },
+	{ name: 'Brasília', country: 'Brazil', lat: -15.79, lon: -47.89, population: 4.7, level: 'low' },
+	{ name: 'Fortaleza', country: 'Brazil', lat: -3.73, lon: -38.54, population: 4.2, level: 'low' },
+	{ name: 'Guayaquil', country: 'Ecuador', lat: -2.17, lon: -79.92, population: 3.0, level: 'low' },
+	{ name: 'Medellín', country: 'Colombia', lat: 6.25, lon: -75.57, population: 4.0, level: 'elevated' },
+
+	// OCEANIA
+	{ name: 'Sydney', country: 'Australia', lat: -33.87, lon: 151.21, population: 5.4, level: 'low' },
+	{ name: 'Melbourne', country: 'Australia', lat: -37.81, lon: 144.96, population: 5.2, level: 'low' },
+	{ name: 'Brisbane', country: 'Australia', lat: -27.47, lon: 153.03, population: 2.6, level: 'low' },
+	{ name: 'Perth', country: 'Australia', lat: -31.95, lon: 115.86, population: 2.2, level: 'low' },
+	{ name: 'Auckland', country: 'New Zealand', lat: -36.85, lon: 174.76, population: 1.7, level: 'low' }
+];

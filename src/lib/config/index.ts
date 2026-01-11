@@ -61,14 +61,23 @@ export {
 	SANCTIONED_COUNTRY_IDS,
 	THREAT_COLORS,
 	WEATHER_CODES,
+	calculateEmergentScore,
+	calculateScoreBreakdown,
+	getEmergentColor,
+	getEmergentLabel,
 	type Hotspot,
 	type ConflictZone,
 	type Chokepoint,
 	type CableLanding,
 	type NuclearSite,
 	type MilitaryBase,
-	type Ocean
+	type Ocean,
+	type ScoreBreakdown,
+	type ScoreFactor
 } from './map';
+
+// World cities data
+export { WORLD_CITIES, type WorldCity } from './world-cities';
 
 // Preset configuration
 export {

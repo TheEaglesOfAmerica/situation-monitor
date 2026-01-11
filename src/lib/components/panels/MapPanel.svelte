@@ -13,6 +13,7 @@
 		SANCTIONED_COUNTRY_IDS,
 		THREAT_COLORS,
 		WEATHER_CODES,
+		WORLD_CITIES,
 		calculateEmergentScore,
 		calculateScoreBreakdown,
 		getEmergentColor,
@@ -62,12 +63,13 @@
 	// Filtered hotspots for search
 	const filteredHotspots = $derived(
 		searchQuery.trim()
-			? HOTSPOTS.filter(
+			? allCitiesWithScores.filter(
 					(h) =>
 						h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						h.desc.toLowerCase().includes(searchQuery.toLowerCase())
-				)
-			: HOTSPOTS.slice(0, 10)
+						h.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						h.country.toLowerCase().includes(searchQuery.toLowerCase())
+			  )
+			: allCitiesWithScores.slice(0, 10)
 	);
 
 	// Get recent news for a location
@@ -82,22 +84,28 @@
 			.slice(0, 5);
 	}
 
-	// Compute emergent scores for all hotspots
-	const hotspotsWithScores = $derived(
-		HOTSPOTS.map((h) => ({
-			...h,
-			emergentScore: h.emergentScore ?? calculateEmergentScore(h.level, Math.random() * 0.3 + 0.35)
-		}))
+	// Merge world cities with threat data, auto-calculate scores
+	const allCitiesWithScores = $derived(
+		WORLD_CITIES.map((city) => {
+			const level = city.level || 'low';
+			const emergentScore = calculateEmergentScore(level, Math.random() * 0.3 + 0.35);
+			return {
+				...city,
+				level,
+				emergentScore,
+				desc: city.desc || `${city.name} — ${city.country} (${city.population}M pop)`
+			};
+		})
 	);
 
-	// Filter cities to show on map: major cities OR score >= 40
+	// Filter: Show cities with population >= 0.75M OR threat score >= 40
 	const visibleHotspots = $derived(
-		hotspotsWithScores.filter((h) => h.isMajorCity || h.emergentScore >= 40)
+		allCitiesWithScores.filter((city) => city.population >= 0.75 || city.emergentScore >= 40)
 	);
 
 	// Critical situations (score >= 70)
 	const criticalSituations = $derived(
-		hotspotsWithScores.filter((h) => h.emergentScore >= 70).sort((a, b) => b.emergentScore - a.emergentScore)
+		allCitiesWithScores.filter((h) => h.emergentScore >= 70).sort((a, b) => b.emergentScore - a.emergentScore)
 	);
 
 	const WEATHER_WATCH_NAMES = [
@@ -109,9 +117,9 @@
 		'Kyiv',
 		'Singapore'
 	];
-	const WEATHER_WATCH: Hotspot[] = WEATHER_WATCH_NAMES.map((name) =>
-		HOTSPOTS.find((h) => h.name === name)
-	).filter(Boolean) as Hotspot[];
+	const WEATHER_WATCH = WEATHER_WATCH_NAMES.map((name) =>
+		allCitiesWithScores.find((h) => h.name === name)
+	).filter(Boolean);
 
 	// Tooltip state
 	let tooltipContent = $state<{
