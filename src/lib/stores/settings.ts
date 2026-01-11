@@ -51,9 +51,22 @@ function loadFromStorage(): Partial<PanelSettings> {
 		const order = localStorage.getItem(STORAGE_KEYS.order);
 		const sizes = localStorage.getItem(STORAGE_KEYS.sizes);
 
+		const parsedOrder = order ? JSON.parse(order) : undefined;
+		
+		// Migration: If 'realtime' panel is missing from order, force reset
+		if (parsedOrder && !parsedOrder.includes('realtime')) {
+			console.log('Migrating settings: adding realtime panel');
+			const allPanelIds = Object.keys(PANELS) as PanelId[];
+			return {
+				enabled: Object.fromEntries(allPanelIds.map((id) => [id, true])) as Record<PanelId, boolean>,
+				order: allPanelIds,
+				sizes: sizes ? JSON.parse(sizes) : undefined
+			};
+		}
+
 		return {
 			enabled: panels ? JSON.parse(panels) : undefined,
-			order: order ? JSON.parse(order) : undefined,
+			order: parsedOrder,
 			sizes: sizes ? JSON.parse(sizes) : undefined
 		};
 	} catch (e) {

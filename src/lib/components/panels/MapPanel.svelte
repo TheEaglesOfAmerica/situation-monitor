@@ -22,13 +22,16 @@
 	import { CACHE_TTLS } from '$lib/config/api';
 	import type { CustomMonitor } from '$lib/types';
 
+	import type { NewsItem } from '$lib/types';
+
 	interface Props {
 		monitors?: CustomMonitor[];
+		news?: NewsItem[];
 		loading?: boolean;
 		error?: string | null;
 	}
 
-	let { monitors = [], loading = false, error = null }: Props = $props();
+	let { monitors = [], news = [], loading = false, error = null }: Props = $props();
 
 	let mapContainer: HTMLDivElement;
 	// D3 objects - initialized in initMap, null before initialization
@@ -66,6 +69,18 @@
 				)
 			: HOTSPOTS.slice(0, 10)
 	);
+
+	// Get recent news for a location
+	function getLocationNews(locationName: string): NewsItem[] {
+		const keywords = locationName.toLowerCase().split(/[,\s]+/);
+		return news
+			.filter(item => {
+				const text = (item.title + ' ' + item.description).toLowerCase();
+				return keywords.some(keyword => text.includes(keyword));
+			})
+			.sort((a, b) => b.timestamp - a.timestamp)
+			.slice(0, 5);
+	}
 
 	// Compute emergent scores for all hotspots
 	const hotspotsWithScores = $derived(

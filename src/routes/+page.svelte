@@ -309,7 +309,7 @@
 				{#if isPanelVisible(panelId)}
 					{#if panelId === 'map'}
 						<div class="panel-slot map-slot" data-panel-id="map">
-							<MapPanel monitors={$monitors.monitors} />
+							<MapPanel monitors={$monitors.monitors} news={allNewsItems} />
 						</div>
 					{:else if panelId === 'realtime'}
 						<div class="panel-slot" data-panel-id="realtime">

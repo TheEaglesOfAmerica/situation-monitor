@@ -56,6 +56,32 @@
 	let nextRefresh = $state(60); // seconds
 	let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
+	// Breaking news notifications
+	let previousBreakingIds = $state(new Set<string>());
+	let newBreakingNews = $state<NewsItem[]>([]);
+	let notificationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Track new breaking news
+	$effect(() => {
+		const currentBreaking = realtimeNews().filter(isBreaking);
+		const currentIds = new Set(currentBreaking.map(n => n.id));
+		
+		// Find truly new items
+		const newItems = currentBreaking.filter(n => !previousBreakingIds.has(n.id));
+		
+		if (newItems.length > 0) {
+			newBreakingNews = newItems;
+			
+			// Clear notification after 10 seconds
+			if (notificationTimeout) clearTimeout(notificationTimeout);
+			notificationTimeout = setTimeout(() => {
+				newBreakingNews = [];
+			}, 10000);
+		}
+		
+		previousBreakingIds = currentIds;
+	});
+
 	onMount(() => {
 		refreshInterval = setInterval(() => {
 			nextRefresh--;
@@ -69,6 +95,9 @@
 	onDestroy(() => {
 		if (refreshInterval) {
 			clearInterval(refreshInterval);
+		}
+		if (notificationTimeout) {
+			clearTimeout(notificationTimeout);
 		}
 	});
 
@@ -89,6 +118,18 @@
 
 <Panel>
 	<div class="realtime-panel">
+		{#if newBreakingNews.length > 0}
+			<div class="breaking-notification">
+				<span class="notification-icon">🚨</span>
+				<div class="notification-content">
+					<strong>{newBreakingNews.length} NEW BREAKING {newBreakingNews.length === 1 ? 'STORY' : 'STORIES'}</strong>
+					<div class="notification-preview">
+						{newBreakingNews[0].title.slice(0, 80)}{newBreakingNews[0].title.length > 80 ? '...' : ''}
+					</div>
+				</div>
+			</div>
+		{/if}
+		
 		<div class="realtime-header">
 			<h3 class="panel-title">
 				<span class="live-indicator">🔴</span>
@@ -129,6 +170,67 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	.breaking-notification {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		padding: 1rem;
+		background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+		border: 2px solid rgba(239, 68, 68, 0.5);
+		border-radius: 8px;
+		animation: slideIn 0.3s ease-out, pulse 2s ease-in-out infinite;
+	}
+
+	.notification-icon {
+		font-size: 1.5rem;
+		animation: shake 0.5s ease-in-out infinite;
+	}
+
+	.notification-content {
+		flex: 1;
+	}
+
+	.notification-content strong {
+		display: block;
+		color: #ef4444;
+		font-size: 0.875rem;
+		font-weight: 700;
+		margin-bottom: 0.25rem;
+		letter-spacing: 0.5px;
+	}
+
+	.notification-preview {
+		color: var(--text-secondary);
+		font-size: 0.8125rem;
+		line-height: 1.4;
+	}
+
+	@keyframes slideIn {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+		}
+		50% {
+			box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+		}
+	}
+
+	@keyframes shake {
+		0%, 100% { transform: rotate(0deg); }
+		25% { transform: rotate(-10deg); }
+		75% { transform: rotate(10deg); }
 	}
 
 	.realtime-header {

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Situation Monitor Storage</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .danger {
+            background: #ef4444;
+        }
+        .danger:hover {
+            background: #dc2626;
+        }
+        .success {
+            background: #10b981;
+        }
+        .success:hover {
+            background: #059669;
+        }
+        .info {
+            background: #64748b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧹 Situation Monitor Storage Manager</h1>
+    
+    <div class="info">
+        <strong>Current Storage:</strong>
+        <pre id="storage"></pre>
+    </div>
+
+    <button onclick="clearPanelOrder()">Clear Panel Order (Force Realtime)</button>
+    <button onclick="clearAll()" class="danger">Clear All Storage</button>
+    <button onclick="refresh()" class="success">Refresh Display</button>
+
+    <div id="result"></div>
+
+    <script>
+        function displayStorage() {
+            const storage = {
+                panelOrder: localStorage.getItem('panelOrder'),
+                situationMonitorPanels: localStorage.getItem('situationMonitorPanels'),
+                panelSizes: localStorage.getItem('panelSizes')
+            };
+            document.getElementById('storage').textContent = JSON.stringify(storage, null, 2);
+        }
+
+        function clearPanelOrder() {
+            localStorage.removeItem('panelOrder');
+            localStorage.removeItem('situationMonitorPanels');
+            document.getElementById('result').innerHTML = '<div class="info" style="background: #10b981;">✅ Panel order cleared! Refresh the app to see realtime panel.</div>';
+            displayStorage();
+        }
+
+        function clearAll() {
+            if (confirm('This will clear ALL settings. Are you sure?')) {
+                localStorage.clear();
+                document.getElementById('result').innerHTML = '<div class="info" style="background: #10b981;">✅ All storage cleared! Refresh the app.</div>';
+                displayStorage();
+            }
+        }
+
+        function refresh() {
+            displayStorage();
+            document.getElementById('result').innerHTML = '<div class="info">🔄 Refreshed</div>';
+        }
+
+        displayStorage();
+    </script>
+</body>
+</html>
