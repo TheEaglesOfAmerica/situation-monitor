@@ -6,12 +6,15 @@ export interface Hotspot {
 	lon: number;
 	level: 'critical' | 'high' | 'elevated' | 'low';
 	desc: string;
+	emergentScore?: number; // 1-100 emergent situation score
+	region?: string;
 }
 
 export interface ConflictZone {
 	name: string;
 	coords: [number, number][];
 	color: string;
+	emergentScore?: number;
 }
 
 export interface Chokepoint {
@@ -48,6 +51,47 @@ export interface Ocean {
 	lon: number;
 }
 
+/**
+ * Calculate emergent score (1-100) based on threat level
+ * Formula: critical=85-100, high=60-84, elevated=35-59, low=1-34
+ */
+export function calculateEmergentScore(level: Hotspot['level'], volatility = 0.5): number {
+	const baseScores: Record<Hotspot['level'], [number, number]> = {
+		critical: [85, 100],
+		high: [60, 84],
+		elevated: [35, 59],
+		low: [1, 34]
+	};
+	const [min, max] = baseScores[level];
+	// Add some variance based on volatility (0-1)
+	const range = max - min;
+	return Math.round(min + range * volatility);
+}
+
+/**
+ * Get color for emergent score (gradient from green to red)
+ */
+export function getEmergentColor(score: number): string {
+	if (score >= 85) return '#ff0000'; // Critical red
+	if (score >= 70) return '#ff4444'; // High red
+	if (score >= 55) return '#ff8800'; // Orange
+	if (score >= 40) return '#ffcc00'; // Yellow
+	if (score >= 25) return '#88cc00'; // Yellow-green
+	return '#00ff88'; // Green
+}
+
+/**
+ * Get label for emergent score
+ */
+export function getEmergentLabel(score: number): string {
+	if (score >= 85) return 'CRITICAL';
+	if (score >= 70) return 'HIGH';
+	if (score >= 55) return 'ELEVATED';
+	if (score >= 40) return 'MODERATE';
+	if (score >= 25) return 'LOW';
+	return 'STABLE';
+}
+
 export const THREAT_COLORS = {
 	critical: '#ff0000',
 	high: '#ff4444',
@@ -67,6 +111,7 @@ export const SANCTIONED_COUNTRY_IDS = [
 ];
 
 export const HOTSPOTS: Hotspot[] = [
+	// NORTH AMERICA
 	{
 		name: 'DC',
 		lat: 38.9,
@@ -82,47 +127,77 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Seattle — Pacific Northwest port, cloud infra, naval & aerospace hub'
 	},
 	{
-		name: 'Moscow',
-		lat: 55.75,
-		lon: 37.6,
-		level: 'elevated',
-		desc: 'Moscow — Kremlin, Russian military command, sanctions hub'
+		name: 'New York',
+		lat: 40.71,
+		lon: -74.01,
+		level: 'low',
+		desc: 'New York — Global finance, UN headquarters, critical infrastructure'
 	},
 	{
-		name: 'Beijing',
-		lat: 39.9,
-		lon: 116.4,
-		level: 'elevated',
-		desc: 'Beijing — CCP headquarters, US-China tensions, tech rivalry'
+		name: 'Los Angeles',
+		lat: 34.05,
+		lon: -118.24,
+		level: 'low',
+		desc: 'Los Angeles — Pacific trade gateway, entertainment, defense industry'
 	},
 	{
-		name: 'Kyiv',
-		lat: 50.45,
-		lon: 30.5,
+		name: 'Houston',
+		lat: 29.76,
+		lon: -95.37,
+		level: 'low',
+		desc: 'Houston — US energy capital, NASA, petrochemical hub'
+	},
+	{
+		name: 'Mexico City',
+		lat: 19.43,
+		lon: -99.13,
+		level: 'low',
+		desc: 'Mexico City — North American manufacturing, security and migration hub'
+	},
+	{
+		name: 'Miami',
+		lat: 25.76,
+		lon: -80.19,
+		level: 'low',
+		desc: 'Miami — Latin America gateway, banking, Caribbean security'
+	},
+	// SOUTH AMERICA
+	{
+		name: 'Caracas',
+		lat: 10.5,
+		lon: -66.9,
 		level: 'high',
-		desc: 'Kyiv — Active conflict zone, Russian invasion ongoing'
+		desc: 'Caracas — Venezuela crisis, Maduro regime, US sanctions, humanitarian emergency'
 	},
 	{
-		name: 'Taipei',
-		lat: 25.03,
-		lon: 121.5,
+		name: 'Bogotá',
+		lat: 4.71,
+		lon: -74.07,
 		level: 'elevated',
-		desc: 'Taipei — Taiwan Strait tensions, TSMC, China threat'
+		desc: 'Bogotá — Colombia drug trafficking, FARC remnants, Venezuela border tensions'
 	},
 	{
-		name: 'Tehran',
-		lat: 35.7,
-		lon: 51.4,
-		level: 'critical',
-		desc: 'Tehran — ACTIVE UPRISING: 200+ cities, 26 provinces. Revolution protests, regime instability, nuclear program'
+		name: 'São Paulo',
+		lat: -23.55,
+		lon: -46.63,
+		level: 'low',
+		desc: 'São Paulo — South American finance, BRICS economy, regional power'
 	},
 	{
-		name: 'Tel Aviv',
-		lat: 32.07,
-		lon: 34.78,
-		level: 'high',
-		desc: 'Tel Aviv — Israel-Gaza conflict, active military operations'
+		name: 'Buenos Aires',
+		lat: -34.60,
+		lon: -58.38,
+		level: 'low',
+		desc: 'Buenos Aires — Argentina economic instability, Falklands disputes'
 	},
+	{
+		name: 'Lima',
+		lat: -12.05,
+		lon: -77.04,
+		level: 'elevated',
+		desc: 'Lima — Peru political turmoil, mining, Pacific shipping lane'
+	},
+	// EUROPE
 	{
 		name: 'London',
 		lat: 51.5,
@@ -138,11 +213,68 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Brussels — EU/NATO headquarters, European policy'
 	},
 	{
-		name: 'Pyongyang',
-		lat: 39.03,
-		lon: 125.75,
+		name: 'Paris',
+		lat: 48.86,
+		lon: 2.35,
+		level: 'low',
+		desc: 'Paris — EU power, nuclear arsenal, UN Security Council'
+	},
+	{
+		name: 'Berlin',
+		lat: 52.52,
+		lon: 13.41,
+		level: 'low',
+		desc: 'Berlin — EU economic engine, energy security, NATO logistics'
+	},
+	{
+		name: 'Kyiv',
+		lat: 50.45,
+		lon: 30.5,
+		level: 'critical',
+		desc: 'Kyiv — Active conflict zone, Russian invasion ongoing, Western aid hub'
+	},
+	{
+		name: 'Moscow',
+		lat: 55.75,
+		lon: 37.6,
 		level: 'elevated',
-		desc: 'Pyongyang — North Korea nuclear threat, missile tests'
+		desc: 'Moscow — Kremlin, Russian military command, sanctions hub'
+	},
+	{
+		name: 'Warsaw',
+		lat: 52.23,
+		lon: 21.01,
+		level: 'elevated',
+		desc: 'Warsaw — NATO eastern flank, Ukraine logistics, defense buildup'
+	},
+	{
+		name: 'Bucharest',
+		lat: 44.43,
+		lon: 26.10,
+		level: 'elevated',
+		desc: 'Bucharest — Black Sea access, NATO base, Ukraine support'
+	},
+	{
+		name: 'Istanbul',
+		lat: 41.01,
+		lon: 28.98,
+		level: 'elevated',
+		desc: 'Istanbul — Bosporus control, NATO member, Russia-Ukraine mediator'
+	},
+	// MIDDLE EAST
+	{
+		name: 'Tehran',
+		lat: 35.7,
+		lon: 51.4,
+		level: 'critical',
+		desc: 'Tehran — ACTIVE UPRISING: 200+ cities, 26 provinces. Revolution protests, regime instability, nuclear program'
+	},
+	{
+		name: 'Tel Aviv',
+		lat: 32.07,
+		lon: 34.78,
+		level: 'high',
+		desc: 'Tel Aviv — Israel-Gaza conflict, active military operations'
 	},
 	{
 		name: 'Riyadh',
@@ -152,18 +284,118 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Riyadh — Saudi oil, OPEC+, Yemen conflict, regional power'
 	},
 	{
-		name: 'Delhi',
-		lat: 28.6,
-		lon: 77.2,
+		name: 'Dubai',
+		lat: 25.20,
+		lon: 55.27,
 		level: 'low',
-		desc: 'Delhi — India rising power, China border tensions'
+		desc: 'Dubai — Gulf finance hub, sanctions evasion risk, trade node'
 	},
 	{
-		name: 'Singapore',
-		lat: 1.35,
-		lon: 103.82,
+		name: 'Baghdad',
+		lat: 33.31,
+		lon: 44.37,
+		level: 'elevated',
+		desc: 'Baghdad — Iran influence, militia activity, oil infrastructure'
+	},
+	{
+		name: 'Beirut',
+		lat: 33.89,
+		lon: 35.50,
+		level: 'high',
+		desc: 'Beirut — Hezbollah stronghold, economic collapse, Israel tensions'
+	},
+	{
+		name: 'Damascus',
+		lat: 33.51,
+		lon: 36.29,
+		level: 'high',
+		desc: 'Damascus — Syrian civil war aftermath, Russian/Iranian presence'
+	},
+	{
+		name: 'Sanaa',
+		lat: 15.35,
+		lon: 44.21,
+		level: 'high',
+		desc: 'Sanaa — Houthi control, Yemen war, Red Sea attacks'
+	},
+	// AFRICA
+	{
+		name: 'Lagos',
+		lat: 6.46,
+		lon: 3.39,
 		level: 'low',
-		desc: 'Singapore — Shipping chokepoint, Asian finance hub'
+		desc: 'Lagos — West Africa finance, shipping, energy and security flashpoints'
+	},
+	{
+		name: 'Cairo',
+		lat: 30.04,
+		lon: 31.24,
+		level: 'elevated',
+		desc: 'Cairo — Suez gateway, regional mediator, economic pressures'
+	},
+	{
+		name: 'Addis Ababa',
+		lat: 9.03,
+		lon: 38.74,
+		level: 'elevated',
+		desc: 'Addis Ababa — African Union HQ, Tigray aftermath, Horn instability'
+	},
+	{
+		name: 'Khartoum',
+		lat: 15.50,
+		lon: 32.56,
+		level: 'critical',
+		desc: 'Khartoum — Sudan civil war, humanitarian crisis, regional spillover'
+	},
+	{
+		name: 'Nairobi',
+		lat: -1.29,
+		lon: 36.82,
+		level: 'low',
+		desc: 'Nairobi — East Africa hub, UN presence, regional stability anchor'
+	},
+	{
+		name: 'Cape Town',
+		lat: -33.92,
+		lon: 18.42,
+		level: 'low',
+		desc: 'Cape Town — Southern Africa shipping, energy, BRICS member'
+	},
+	{
+		name: 'Kinshasa',
+		lat: -4.44,
+		lon: 15.27,
+		level: 'elevated',
+		desc: 'Kinshasa — DRC conflict, rare minerals, M23 rebel activity'
+	},
+	// ASIA
+	{
+		name: 'Beijing',
+		lat: 39.9,
+		lon: 116.4,
+		level: 'elevated',
+		desc: 'Beijing — CCP headquarters, US-China tensions, tech rivalry'
+	},
+	{
+		name: 'Shanghai',
+		lat: 31.23,
+		lon: 121.47,
+		level: 'low',
+		desc: 'Shanghai — China trade gateway, finance, supply chain node'
+	},
+	{
+		name: 'Hong Kong',
+		lat: 22.32,
+		lon: 114.17,
+		level: 'elevated',
+		desc: 'Hong Kong — Pro-democracy crackdown, finance hub, autonomy erosion'
+	},
+	{
+		name: 'Taipei',
+		lat: 25.03,
+		lon: 121.5,
+		level: 'elevated',
+		desc: 'Taipei — Taiwan Strait tensions, TSMC, China threat'
 	},
 	{
 		name: 'Tokyo',
@@ -173,19 +405,83 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Tokyo — US ally, regional security, economic power'
 	},
 	{
-		name: 'Caracas',
-		lat: 10.5,
-		lon: -66.9,
-		level: 'high',
-		desc: 'Caracas — Venezuela crisis, Maduro regime, US sanctions, humanitarian emergency'
+		name: 'Seoul',
+		lat: 37.57,
+		lon: 126.98,
+		level: 'elevated',
+		desc: 'Seoul — North Korea threat, US forces, semiconductor hub'
 	},
 	{
-		name: 'Nuuk',
-		lat: 64.18,
-		lon: -51.72,
-		level: 'elevated',
-		desc: 'Nuuk — Greenland, US acquisition interest, Arctic strategy, Denmark tensions'
+		name: 'Pyongyang',
+		lat: 39.03,
+		lon: 125.75,
+		level: 'high',
+		desc: 'Pyongyang — North Korea nuclear threat, ICBM tests, Russia ties'
 	},
+	{
+		name: 'Delhi',
+		lat: 28.6,
+		lon: 77.2,
+		level: 'low',
+		desc: 'Delhi — India rising power, China border tensions'
+	},
+	{
+		name: 'Mumbai',
+		lat: 19.08,
+		lon: 72.88,
+		level: 'low',
+		desc: 'Mumbai — India finance hub, naval power, terrorism target'
+	},
+	{
+		name: 'Islamabad',
+		lat: 33.69,
+		lon: 73.06,
+		level: 'elevated',
+		desc: 'Islamabad — Pakistan nuclear state, Afghanistan border, India tensions'
+	},
+	{
+		name: 'Kabul',
+		lat: 34.53,
+		lon: 69.17,
+		level: 'high',
+		desc: 'Kabul — Taliban rule, ISIS-K threat, humanitarian crisis'
+	},
+	{
+		name: 'Singapore',
+		lat: 1.35,
+		lon: 103.82,
+		level: 'low',
+		desc: 'Singapore — Shipping chokepoint, Asian finance hub'
+	},
+	{
+		name: 'Bangkok',
+		lat: 13.76,
+		lon: 100.50,
+		level: 'low',
+		desc: 'Bangkok — Southeast Asia hub, tourism, Mekong politics'
+	},
+	{
+		name: 'Manila',
+		lat: 14.60,
+		lon: 120.98,
+		level: 'elevated',
+		desc: 'Manila — South China Sea disputes, US alliance, China pressure'
+	},
+	{
+		name: 'Jakarta',
+		lat: -6.21,
+		lon: 106.85,
+		level: 'low',
+		desc: 'Jakarta — Largest Muslim nation, ASEAN leader, maritime security'
+	},
+	{
+		name: 'Hanoi',
+		lat: 21.03,
+		lon: 105.85,
+		level: 'low',
+		desc: 'Hanoi — Vietnam manufacturing boom, South China Sea claimant'
+	},
+	// RUSSIA & CENTRAL ASIA
 	{
 		name: 'Novosibirsk',
 		lat: 55.03,
@@ -194,6 +490,21 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Novosibirsk — Siberian logistics node, rail corridor, energy hub'
 	},
 	{
+		name: 'Vladivostok',
+		lat: 43.12,
+		lon: 131.89,
+		level: 'elevated',
+		desc: 'Vladivostok — Russian Pacific Fleet, China border, North Korea link'
+	},
+	{
+		name: 'Almaty',
+		lat: 43.24,
+		lon: 76.95,
+		level: 'low',
+		desc: 'Almaty — Kazakhstan finance, Belt & Road, Russia influence'
+	},
+	// OCEANIA
+	{
 		name: 'Sydney',
 		lat: -33.87,
 		lon: 151.21,
@@ -201,18 +512,26 @@ export const HOTSPOTS: Hotspot[] = [
 		desc: 'Sydney — Pacific naval access, AUS-US alliance, finance and ports'
 	},
 	{
-		name: 'Mexico City',
-		lat: 19.43,
-		lon: -99.13,
+		name: 'Canberra',
+		lat: -35.28,
+		lon: 149.13,
 		level: 'low',
-		desc: 'Mexico City — North American manufacturing, security and migration hub'
+		desc: 'Canberra — AUKUS alliance, Five Eyes, Indo-Pacific strategy'
+	},
+	// ARCTIC
+	{
+		name: 'Nuuk',
+		lat: 64.18,
+		lon: -51.72,
+		level: 'elevated',
+		desc: 'Nuuk — Greenland, US acquisition interest, Arctic strategy, Denmark tensions'
 	},
 	{
-		name: 'Lagos',
-		lat: 6.46,
-		lon: 3.39,
-		level: 'low',
-		desc: 'Lagos — West Africa finance, shipping, energy and security flashpoints'
+		name: 'Murmansk',
+		lat: 68.97,
+		lon: 33.09,
+		level: 'elevated',
+		desc: 'Murmansk — Russian Northern Fleet, Arctic militarization, nuclear subs'
 	}
 ];
 

@@ -12,7 +12,10 @@
 		OCEANS,
 		SANCTIONED_COUNTRY_IDS,
 		THREAT_COLORS,
-		WEATHER_CODES
+		WEATHER_CODES,
+		calculateEmergentScore,
+		getEmergentColor,
+		getEmergentLabel
 	} from '$lib/config/map';
 	import { CACHE_TTLS } from '$lib/config/api';
 	import type { CustomMonitor } from '$lib/types';
@@ -40,6 +43,40 @@
 
 	const WIDTH = 800;
 	const HEIGHT = 400;
+
+	// Search state
+	let searchQuery = $state('');
+	let searchOpen = $state(false);
+	let selectedHotspot = $state<Hotspot | null>(null);
+
+	// Zoom level state
+	let currentZoom = $state(1);
+	const MIN_ZOOM = 1;
+	const MAX_ZOOM = 6;
+
+	// Filtered hotspots for search
+	const filteredHotspots = $derived(
+		searchQuery.trim()
+			? HOTSPOTS.filter(
+					(h) =>
+						h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+						h.desc.toLowerCase().includes(searchQuery.toLowerCase())
+				)
+			: HOTSPOTS.slice(0, 10)
+	);
+
+	// Compute emergent scores for all hotspots
+	const hotspotsWithScores = $derived(
+		HOTSPOTS.map((h) => ({
+			...h,
+			emergentScore: h.emergentScore ?? calculateEmergentScore(h.level, Math.random() * 0.3 + 0.35)
+		}))
+	);
+
+	// Critical situations (score >= 70)
+	const criticalSituations = $derived(
+		hotspotsWithScores.filter((h) => h.emergentScore >= 70).sort((a, b) => b.emergentScore - a.emergentScore)
+	);
 
 	const WEATHER_WATCH_NAMES = [
 		'Seattle',
@@ -208,9 +245,11 @@
 	}
 
 	const FOCUS_TARGETS = [
-		{ label: 'Seattle', lat: 47.61, lon: -122.33, scale: 2.2 },
-		{ label: 'Novosibirsk', lat: 55.03, lon: 82.93, scale: 2.1 },
-		{ label: 'Sydney', lat: -33.87, lon: 151.21, scale: 2.1 }
+		{ label: 'Americas', lat: 15, lon: -90, scale: 1.8 },
+		{ label: 'Europe', lat: 50, lon: 15, scale: 2.5 },
+		{ label: 'Middle East', lat: 30, lon: 45, scale: 2.8 },
+		{ label: 'Asia-Pacific', lat: 25, lon: 115, scale: 2.0 },
+		{ label: 'Africa', lat: 5, lon: 20, scale: 2.0 }
 	];
 
 	function focusOn(lon: number, lat: number, scale = 2): void {
@@ -222,12 +261,32 @@
 			.translate(WIDTH / 2 - x * scale, HEIGHT / 2 - y * scale)
 			.scale(scale);
 		svg.transition().duration(450).call(zoom.transform, t);
+		currentZoom = scale;
 	}
 
 	function focusTarget(label: string): void {
 		const target = FOCUS_TARGETS.find((t) => t.label === label);
 		if (!target) return;
 		focusOn(target.lon, target.lat, target.scale);
+	}
+
+	function focusHotspot(hotspot: Hotspot): void {
+		selectedHotspot = hotspot;
+		searchOpen = false;
+		searchQuery = '';
+		focusOn(hotspot.lon, hotspot.lat, 3.5);
+	}
+
+	function handleSearchSelect(hotspot: Hotspot): void {
+		focusHotspot(hotspot);
+	}
+
+	function handleZoomSlider(e: Event): void {
+		const target = e.target as HTMLInputElement;
+		const newZoom = parseFloat(target.value);
+		if (!svg || !zoom || !d3Module) return;
+		svg.transition().duration(200).call(zoom.scaleTo, newZoom);
+		currentZoom = newZoom;
 	}
 
 	function toggleWeatherOverlay(): void {
@@ -353,7 +412,7 @@
 		// Setup zoom - disable scroll wheel, allow touch pinch and buttons
 		zoom = d3
 			.zoom<SVGSVGElement, unknown>()
-			.scaleExtent([1, 6])
+			.scaleExtent([MIN_ZOOM, MAX_ZOOM])
 			.filter((event) => {
 				// Block scroll wheel zoom (wheel events)
 				if (event.type === 'wheel') return false;
@@ -368,6 +427,7 @@
 			})
 			.on('zoom', (event) => {
 				mapGroup.attr('transform', event.transform.toString());
+				currentZoom = event.transform.k;
 			});
 
 		enableZoom();
@@ -723,71 +783,174 @@
 
 <Panel id="map" title="Global Situation" {loading} {error}>
 	<div class="map-shell">
+		<!-- Top Controls Bar -->
 		<div class="map-topbar">
-			<div>
-				<p class="map-eyebrow">Live situational picture</p>
+			<div class="topbar-left">
+				<div class="search-container">
+					<input
+						type="text"
+						class="search-input"
+						placeholder="Search cities, regions..."
+						bind:value={searchQuery}
+						onfocus={() => (searchOpen = true)}
+					/>
+					{#if searchOpen && searchQuery.length > 0}
+						<div class="search-dropdown">
+							{#each filteredHotspots as hotspot}
+								<button
+									class="search-result"
+									onclick={() => handleSearchSelect(hotspot)}
+								>
+									<span class="search-name">{hotspot.name}</span>
+									<span class="search-level" style="color: {THREAT_COLORS[hotspot.level]}">{hotspot.level.toUpperCase()}</span>
+								</button>
+							{/each}
+							{#if filteredHotspots.length === 0}
+								<div class="search-empty">No locations found</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
 				<div class="chip-row">
-					<span class="chip">Hotspots {HOTSPOTS.length}</span>
-					<span class="chip">Conflict zones {CONFLICT_ZONES.length}</span>
-					<span class="chip">Chokepoints {CHOKEPOINTS.length}</span>
-					<span class="chip weather {weatherOverlayEnabled ? 'active' : ''}">
-						Weather {weatherOverlayEnabled ? 'on' : 'off'}
-					</span>
+					<span class="chip">{HOTSPOTS.length} locations</span>
+					<span class="chip">{criticalSituations.length} critical</span>
 				</div>
 			</div>
 			<div class="topbar-actions">
-				<div class="focus-row">
+				<div class="region-btns">
 					{#each FOCUS_TARGETS as target}
-						<button class="pill-btn ghost" onclick={() => focusTarget(target.label)}>
-							Center {target.label}
+						<button class="region-btn" onclick={() => focusTarget(target.label)}>
+							{target.label}
 						</button>
 					{/each}
 				</div>
 				<button class="pill-btn" class:active={weatherOverlayEnabled} onclick={toggleWeatherOverlay}>
-					Live weather layer
+					🌤️ Weather
 				</button>
-				<button class="pill-btn" onclick={resetZoom}>Reset view</button>
+				<button class="pill-btn" onclick={resetZoom}>⟲ Reset</button>
 			</div>
 		</div>
 
-		<div class="map-body" bind:this={mapContainer}>
-			<svg class="map-svg"></svg>
-			<div class="rain-overlay" class:active={weatherOverlayEnabled}></div>
-			{#if tooltipVisible && tooltipContent}
-				<div
-					class="map-tooltip"
-					style="left: {tooltipPosition.left}px; top: {tooltipPosition.top}px;"
-				>
-					<strong style="color: {tooltipContent.color}">{tooltipContent.title}</strong>
-					{#each tooltipContent.lines as line}
-						<br /><span class="tooltip-line">{line}</span>
+		<!-- Main Map Area -->
+		<div class="map-main">
+			<!-- Critical Situations Sidebar -->
+			<div class="situations-sidebar">
+				<div class="sidebar-header">
+					<span class="sidebar-title">🚨 Emergent Situations</span>
+				</div>
+				<div class="situations-list">
+					{#each criticalSituations.slice(0, 8) as situation}
+						{@const score = situation.emergentScore}
+						<button class="situation-card" onclick={() => focusHotspot(situation)}>
+							<div class="situation-header">
+								<span class="situation-name">{situation.name}</span>
+								<span class="situation-score" style="background: {getEmergentColor(score)}">
+									{score}
+								</span>
+							</div>
+							<div class="situation-label" style="color: {getEmergentColor(score)}">
+								{getEmergentLabel(score)}
+							</div>
+							<div class="situation-bar">
+								<div class="situation-fill" style="width: {score}%; background: {getEmergentColor(score)}"></div>
+							</div>
+						</button>
 					{/each}
 				</div>
-			{/if}
-
-			<div class="map-legend">
-				<div class="legend-item">
-					<span class="legend-dot high"></span> High
-				</div>
-				<div class="legend-item">
-					<span class="legend-dot elevated"></span> Elevated
-				</div>
-				<div class="legend-item">
-					<span class="legend-dot low"></span> Low
-				</div>
-				<div class="legend-item">
-					<span class="legend-dot weather-ring"></span> Weather ring (temp)
-				</div>
-				<div class="legend-note">Hover anywhere to see local time and weather.</div>
 			</div>
 
+			<!-- Map Container -->
+			<div class="map-body" bind:this={mapContainer}>
+				<svg class="map-svg"></svg>
+				<div class="rain-overlay" class:active={weatherOverlayEnabled}></div>
+				{#if tooltipVisible && tooltipContent}
+					<div
+						class="map-tooltip"
+						style="left: {tooltipPosition.left}px; top: {tooltipPosition.top}px;"
+					>
+						<strong style="color: {tooltipContent.color}">{tooltipContent.title}</strong>
+						{#each tooltipContent.lines as line}
+							<br /><span class="tooltip-line">{line}</span>
+						{/each}
+					</div>
+				{/if}
+
+				<!-- Zoom Controls -->
+				<div class="zoom-controls">
+					<button class="zoom-btn" onclick={zoomIn} title="Zoom in">+</button>
+					<input
+						type="range"
+						class="zoom-slider"
+						min={MIN_ZOOM}
+						max={MAX_ZOOM}
+						step="0.1"
+						value={currentZoom}
+						oninput={handleZoomSlider}
+					/>
+					<button class="zoom-btn" onclick={zoomOut} title="Zoom out">−</button>
+					<span class="zoom-level">{Math.round(currentZoom * 100)}%</span>
+				</div>
+
+				<!-- Legend -->
+				<div class="map-legend">
+					<div class="legend-title">Threat Level</div>
+					<div class="legend-item">
+						<span class="legend-dot critical"></span> Critical (85-100)
+					</div>
+					<div class="legend-item">
+						<span class="legend-dot high"></span> High (60-84)
+					</div>
+					<div class="legend-item">
+						<span class="legend-dot elevated"></span> Elevated (35-59)
+					</div>
+					<div class="legend-item">
+						<span class="legend-dot low"></span> Stable (1-34)
+					</div>
+				</div>
+
+				<!-- Selected Location Info -->
+				{#if selectedHotspot}
+					{@const score = calculateEmergentScore(selectedHotspot.level, 0.5)}
+					<div class="selected-info">
+						<button class="selected-close" onclick={() => (selectedHotspot = null)}>×</button>
+						<div class="selected-header">
+							<span class="selected-name">{selectedHotspot.name}</span>
+							<span class="selected-score" style="background: {getEmergentColor(score)}">{score}</span>
+						</div>
+						<p class="selected-desc">{selectedHotspot.desc}</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Weather Tracker Footer -->
+		{#if weatherOverlayEnabled}
 			<div class="weather-tracker">
 				<div class="weather-header">
 					<div>
-						<div class="weather-title">Live weather tracker</div>
-						<div class="weather-sub">Follows key hubs and auto-updates</div>
+						<div class="weather-title">Live Weather</div>
 					</div>
 					<span class="weather-timestamp">
+						{weatherUpdatedAt ? `Updated ${weatherUpdatedAt}` : 'Syncing...'}
+					</span>
+				</div>
+				<div class="weather-grid">
+					{#each WEATHER_WATCH as loc}
+						<button class="weather-card" onclick={() => focusHotspot(loc)}>
+							<div class="weather-city">{loc.name}</div>
+							<div class="weather-metric">
+								{weatherSnapshots[loc.name]?.temp ?? '—'}°F
+							</div>
+							<div class="weather-meta">
+								{weatherSnapshots[loc.name]?.condition ?? 'Fetching...'}
+							</div>
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+</Panel>
 						{weatherUpdatedAt ? `Updated ${weatherUpdatedAt}` : 'Syncing...'}
 					</span>
 				</div>
