@@ -6,7 +6,12 @@
 
 import type { NewsItem, NewsCategory } from '$lib/types';
 import { setCategoryNews, setScrapingInterval, getScrapingInterval, isScrapingActive } from './news-store';
-import { OPENROUTER_API_KEY, NEWS_REFRESH_INTERVAL, ENABLE_BACKGROUND_SCRAPING } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+
+// Get environment variables with defaults
+const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY || '';
+const NEWS_REFRESH_INTERVAL = env.NEWS_REFRESH_INTERVAL || '300000';
+const ENABLE_BACKGROUND_SCRAPING = env.ENABLE_BACKGROUND_SCRAPING || 'true';
 
 // RSS Feed sources - expanded for broader coverage
 const RSS_SOURCES: Record<string, { url: string; category: NewsCategory | 'realtime' }[]> = {

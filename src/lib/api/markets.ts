@@ -1,121 +1,176 @@
 /**
- * Markets API - Fetch market data from various sources
+ * Markets API - Fetches market data from server API
  */
 
-import { INDICES, SECTORS, COMMODITIES, CRYPTO } from '$lib/config/markets';
+import { CRYPTO } from '$lib/config/markets';
 import type { MarketItem, SectorPerformance, CryptoItem } from '$lib/types';
-import { CORS_PROXY_URL, logger } from '$lib/config/api';
+import { logger } from '$lib/config/api';
 
-interface CoinGeckoPrice {
-	usd: number;
-	usd_24h_change?: number;
-}
-
-interface CoinGeckoPricesResponse {
-	[key: string]: CoinGeckoPrice;
+interface ServerMarketData {
+	crypto: { id: string; symbol: string; name: string; current_price: number; price_change_percentage_24h: number }[];
+	indices: { symbol: string; name: string; price: number; change: number; changePercent: number }[];
+	commodities: { symbol: string; name: string; price: number; change: number; changePercent: number }[];
+	sectors: { symbol: string; name: string; changePercent: number }[];
+	lastUpdated: number;
 }
 
 /**
- * Fetch crypto prices from CoinGecko via proxy
+ * Fetch all market data from server
  */
-export async function fetchCryptoPrices(): Promise<CryptoItem[]> {
+async function fetchServerMarkets(): Promise<ServerMarketData | null> {
 	try {
-		const ids = CRYPTO.map((c) => c.id).join(',');
-		const coinGeckoUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
-
-		// Use proxy to avoid CORS/rate limiting issues
-		const proxyUrl = CORS_PROXY_URL + encodeURIComponent(coinGeckoUrl);
-		logger.log('Markets API', 'Fetching crypto from:', proxyUrl);
-
-		const response = await fetch(proxyUrl);
+		const response = await fetch('/api/markets');
 		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			throw new Error(`HTTP ${response.status}`);
 		}
-
-		const data: CoinGeckoPricesResponse = await response.json();
-
-		return CRYPTO.map((crypto) => {
-			const priceData = data[crypto.id];
-			return {
-				id: crypto.id,
-				symbol: crypto.symbol,
-				name: crypto.name,
-				current_price: priceData?.usd || 0,
-				price_change_24h: priceData?.usd_24h_change || 0,
-				price_change_percentage_24h: priceData?.usd_24h_change || 0
-			};
-		});
+		return await response.json();
 	} catch (error) {
-		logger.error('Markets API', 'Error fetching crypto:', error);
-		return CRYPTO.map((c) => ({
-			id: c.id,
-			symbol: c.symbol,
-			name: c.name,
-			current_price: 0,
-			price_change_24h: 0,
-			price_change_percentage_24h: 0
-		}));
+		logger.error('Markets API', 'Error fetching from server:', error);
+		return null;
 	}
 }
 
 /**
- * Fetch market indices (via proxy for Yahoo Finance)
- * Note: Returns placeholder data - would need Yahoo Finance API or similar
+ * Fetch crypto prices
+ */
+export async function fetchCryptoPrices(): Promise<CryptoItem[]> {
+	const data = await fetchServerMarkets();
+	
+	if (data?.crypto && data.crypto.length > 0) {
+		return data.crypto.map(c => ({
+			id: c.id,
+			symbol: c.symbol,
+			name: c.name,
+			current_price: c.current_price,
+			price_change_24h: c.price_change_percentage_24h,
+			price_change_percentage_24h: c.price_change_percentage_24h
+		}));
+	}
+	
+	// Fallback to empty data
+	return CRYPTO.map((c) => ({
+		id: c.id,
+		symbol: c.symbol,
+		name: c.name,
+		current_price: 0,
+		price_change_24h: 0,
+		price_change_percentage_24h: 0
+	}));
+}
+
+/**
+ * Fetch market indices
  */
 export async function fetchIndices(): Promise<MarketItem[]> {
-	// TODO: Implement real market data fetching
-	// Options: Yahoo Finance API, Alpha Vantage, Polygon.io
-	return INDICES.map((index) => ({
-		symbol: index.symbol,
-		name: index.name,
-		price: NaN, // NaN indicates data not available
-		change: NaN,
-		changePercent: NaN,
-		type: 'index' as const
-	}));
+	const data = await fetchServerMarkets();
+	
+	if (data?.indices) {
+		return data.indices.map(i => ({
+			symbol: i.symbol,
+			name: i.name,
+			price: i.price,
+			change: i.change,
+			changePercent: i.changePercent,
+			type: 'index' as const
+		}));
+	}
+	
+	return [];
 }
 
 /**
  * Fetch sector performance
- * Note: Returns placeholder data - would need market data provider
  */
 export async function fetchSectorPerformance(): Promise<SectorPerformance[]> {
-	// TODO: Implement real sector data fetching
-	return SECTORS.map((sector) => ({
-		symbol: sector.symbol,
-		name: sector.name,
-		price: NaN,
-		change: NaN,
-		changePercent: NaN
-	}));
+	const data = await fetchServerMarkets();
+	
+	if (data?.sectors) {
+		return data.sectors.map(s => ({
+			symbol: s.symbol,
+			name: s.name,
+			price: 0,
+			change: 0,
+			changePercent: s.changePercent
+		}));
+	}
+	
+	return [];
 }
 
 /**
  * Fetch commodities
- * Note: Returns placeholder data - would need commodities data provider
  */
 export async function fetchCommodities(): Promise<MarketItem[]> {
-	// TODO: Implement real commodities data fetching
-	return COMMODITIES.map((commodity) => ({
-		symbol: commodity.symbol,
-		name: commodity.name,
-		price: NaN,
-		change: NaN,
-		changePercent: NaN,
-		type: 'commodity' as const
-	}));
+	const data = await fetchServerMarkets();
+	
+	if (data?.commodities) {
+		return data.commodities.map(c => ({
+			symbol: c.symbol,
+			name: c.name,
+			price: c.price,
+			change: c.change,
+			changePercent: c.changePercent,
+			type: 'commodity' as const
+		}));
+	}
+	
+	return [];
 }
 
 /**
  * Fetch all market data
  */
 export async function fetchAllMarkets() {
-	const [crypto, indices, sectors, commodities] = await Promise.all([
-		fetchCryptoPrices(),
-		fetchIndices(),
-		fetchSectorPerformance(),
-		fetchCommodities()
-	]);
-
-	return { crypto, indices, sectors, commodities };
+	const data = await fetchServerMarkets();
+	
+	if (data) {
+		return {
+			crypto: data.crypto.map(c => ({
+				id: c.id,
+				symbol: c.symbol,
+				name: c.name,
+				current_price: c.current_price,
+				price_change_24h: c.price_change_percentage_24h,
+				price_change_percentage_24h: c.price_change_percentage_24h
+			})),
+			indices: data.indices.map(i => ({
+				symbol: i.symbol,
+				name: i.name,
+				price: i.price,
+				change: i.change,
+				changePercent: i.changePercent,
+				type: 'index' as const
+			})),
+			sectors: data.sectors.map(s => ({
+				symbol: s.symbol,
+				name: s.name,
+				price: 0,
+				change: 0,
+				changePercent: s.changePercent
+			})),
+			commodities: data.commodities.map(c => ({
+				symbol: c.symbol,
+				name: c.name,
+				price: c.price,
+				change: c.change,
+				changePercent: c.changePercent,
+				type: 'commodity' as const
+			}))
+		};
+	}
+	
+	// Fallback
+	return {
+		crypto: CRYPTO.map(c => ({
+			id: c.id,
+			symbol: c.symbol,
+			name: c.name,
+			current_price: 0,
+			price_change_24h: 0,
+			price_change_percentage_24h: 0
+		})),
+		indices: [],
+		sectors: [],
+		commodities: []
+	};
 }
