@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { Panel } from '$lib/components/common';
 	import {
 		HOTSPOTS,
@@ -40,7 +41,15 @@
 	const WIDTH = 800;
 	const HEIGHT = 400;
 
-	const WEATHER_WATCH_NAMES = ['Seattle', 'DC', 'London', 'Tokyo', 'Kyiv', 'Singapore'];
+	const WEATHER_WATCH_NAMES = [
+		'Seattle',
+		'Novosibirsk',
+		'Sydney',
+		'London',
+		'Tokyo',
+		'Kyiv',
+		'Singapore'
+	];
 	const WEATHER_WATCH: Hotspot[] = WEATHER_WATCH_NAMES.map((name) =>
 		HOTSPOTS.find((h) => h.name === name)
 	).filter(Boolean) as Hotspot[];
@@ -60,6 +69,8 @@
 		timestamp: number;
 	}
 	const dataCache: Record<string, CacheEntry<unknown>> = {};
+
+	const OVERLAY_STORAGE_KEY = 'mapWeatherOverlay';
 
 	// Weather overlay state
 	let weatherLayer: any = null;
@@ -195,9 +206,35 @@
 			}
 		});
 	}
++
++	const FOCUS_TARGETS = [
++		{ label: 'Seattle', lat: 47.61, lon: -122.33, scale: 2.2 },
++		{ label: 'Novosibirsk', lat: 55.03, lon: 82.93, scale: 2.1 },
++		{ label: 'Sydney', lat: -33.87, lon: 151.21, scale: 2.1 }
++	];
++
++	function focusOn(lon: number, lat: number, scale = 2): void {
++		if (!projection || !zoom || !svg || !d3Module) return;
++		const point = projection([lon, lat]);
++		if (!point) return;
++		const [x, y] = point;
++		const t = d3Module.zoomIdentity
++			.translate(WIDTH / 2 - x * scale, HEIGHT / 2 - y * scale)
++			.scale(scale);
++		svg.transition().duration(450).call(zoom.transform, t);
++	}
++
++	function focusTarget(label: string): void {
++		const target = FOCUS_TARGETS.find((t) => t.label === label);
++		if (!target) return;
++		focusOn(target.lon, target.lat, target.scale);
++	}
 
 	function toggleWeatherOverlay(): void {
 		weatherOverlayEnabled = !weatherOverlayEnabled;
+		if (browser) {
+			localStorage.setItem(OVERLAY_STORAGE_KEY, weatherOverlayEnabled ? '1' : '0');
+		}
 		if (weatherOverlayEnabled) {
 			renderWeatherOverlay();
 		} else if (weatherLayer) {
@@ -669,6 +706,9 @@
 	});
 
 	onMount(() => {
+		if (browser) {
+			weatherOverlayEnabled = localStorage.getItem(OVERLAY_STORAGE_KEY) === '1';
+		}
 		initMap();
 		refreshWeatherSnapshots();
 		weatherTimer = window.setInterval(refreshWeatherSnapshots, 5 * 60 * 1000);
@@ -696,6 +736,13 @@
 				</div>
 			</div>
 			<div class="topbar-actions">
+				<div class="focus-row">
+					{#each FOCUS_TARGETS as target}
+						<button class="pill-btn ghost" onclick={() => focusTarget(target.label)}>
+							Center {target.label}
+						</button>
+					{/each}
+				</div>
 				<button class="pill-btn" class:active={weatherOverlayEnabled} onclick={toggleWeatherOverlay}>
 					Live weather layer
 				</button>
@@ -705,6 +752,7 @@
 
 		<div class="map-body" bind:this={mapContainer}>
 			<svg class="map-svg"></svg>
++			<div class="rain-overlay" class:active={weatherOverlayEnabled}></div>
 			{#if tooltipVisible && tooltipContent}
 				<div
 					class="map-tooltip"
@@ -824,6 +872,12 @@
 		gap: 0.35rem;
 		flex-wrap: wrap;
 	}
++
++	.focus-row {
++		display: flex;
++		gap: 0.35rem;
++		flex-wrap: wrap;
++	}
 
 	.pill-btn {
 		background: rgba(18, 46, 40, 0.8);
@@ -835,6 +889,11 @@
 		cursor: pointer;
 		transition: all 0.2s ease;
 	}
++
++	.pill-btn.ghost {
++		background: rgba(18, 46, 40, 0.35);
++		color: #b9d8cc;
++	}
 
 	.pill-btn:hover,
 	.pill-btn.active {
@@ -855,6 +914,42 @@
 		border-radius: 6px;
 		overflow: hidden;
 		box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+	}
+
+	.rain-overlay {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: radial-gradient(circle at 40% 20%, rgba(0, 120, 255, 0.05), transparent 45%),
+			radial-gradient(circle at 70% 70%, rgba(0, 90, 180, 0.05), transparent 50%),
+			repeating-linear-gradient(
+				120deg,
+				rgba(0, 180, 255, 0.12) 0px,
+				rgba(0, 180, 255, 0.12) 2px,
+				transparent 8px,
+				transparent 16px
+			);
+		mix-blend-mode: screen;
+		opacity: 0;
+		filter: blur(0.5px);
+		animation: rain-shift 18s linear infinite;
+		transition: opacity 0.3s ease;
+	}
+
+	.rain-overlay.active {
+		opacity: 0.32;
+	}
+
+	@keyframes rain-shift {
+		0% {
+			transform: translate3d(-5%, -5%, 0) scale(1.02);
+		}
+		50% {
+			transform: translate3d(5%, 8%, 0) scale(1.05);
+		}
+		100% {
+			transform: translate3d(12%, 16%, 0) scale(1.08);
+		}
 	}
 
 	.map-svg {

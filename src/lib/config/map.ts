@@ -185,6 +185,34 @@ export const HOTSPOTS: Hotspot[] = [
 		lon: -51.72,
 		level: 'elevated',
 		desc: 'Nuuk — Greenland, US acquisition interest, Arctic strategy, Denmark tensions'
+	},
+	{
+		name: 'Novosibirsk',
+		lat: 55.03,
+		lon: 82.93,
+		level: 'elevated',
+		desc: 'Novosibirsk — Siberian logistics node, rail corridor, energy hub'
+	},
+	{
+		name: 'Sydney',
+		lat: -33.87,
+		lon: 151.21,
+		level: 'low',
+		desc: 'Sydney — Pacific naval access, AUS-US alliance, finance and ports'
+	},
+	{
+		name: 'Mexico City',
+		lat: 19.43,
+		lon: -99.13,
+		level: 'low',
+		desc: 'Mexico City — North American manufacturing, security and migration hub'
+	},
+	{
+		name: 'Lagos',
+		lat: 6.46,
+		lon: 3.39,
+		level: 'low',
+		desc: 'Lagos — West Africa finance, shipping, energy and security flashpoints'
 	}
 ];
 
