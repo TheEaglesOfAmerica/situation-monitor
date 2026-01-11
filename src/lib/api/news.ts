@@ -40,6 +40,73 @@ interface GdeltResponse {
 }
 
 /**
+ * Priority news sources - higher quality and reliability
+ */
+const PRIORITY_DOMAINS = new Set([
+	'reuters.com',
+	'apnews.com',
+	'bbc.com',
+	'bbc.co.uk',
+	'theguardian.com',
+	'nytimes.com',
+	'washingtonpost.com',
+	'foreignpolicy.com',
+	'foreignaffairs.com',
+	'csis.org',
+	'brookings.edu',
+	'economist.com',
+	'ft.com',
+	'wsj.com',
+	'politico.com',
+	'defenseone.com',
+	'breakingdefense.com'
+]);
+
+/**
+ * Calculate relevance score for an article (0-100)
+ */
+function calculateRelevanceScore(article: GdeltArticle, category: NewsCategory): number {
+	let score = 50; // Base score
+	const title = (article.title || '').toLowerCase();
+	const domain = (article.domain || '').toLowerCase();
+
+	// Boost for priority sources
+	if (PRIORITY_DOMAINS.has(domain)) {
+		score += 20;
+	}
+
+	// Boost for alert keywords
+	if (containsAlertKeyword(title).isAlert) {
+		score += 15;
+	}
+
+	// Boost for recent articles (within 24 hours)
+	if (article.seendate) {
+		const age = Date.now() - new Date(article.seendate).getTime();
+		const hoursOld = age / (1000 * 60 * 60);
+		if (hoursOld < 6) score += 15;
+		else if (hoursOld < 24) score += 10;
+		else if (hoursOld < 48) score += 5;
+	}
+
+	// Boost for region detection
+	if (detectRegion(title)) {
+		score += 10;
+	}
+
+	// Boost for multiple topics
+	const topics = detectTopics(title);
+	score += Math.min(topics.length * 5, 15);
+
+	// Penalize clickbait patterns
+	if (title.includes('you won\'t believe') || title.includes('shocking') || title.includes('amazing')) {
+		score -= 20;
+	}
+
+	return Math.max(0, Math.min(100, score));
+}
+
+/**
  * Transform GDELT article to NewsItem
  */
 function transformGdeltArticle(
@@ -65,7 +132,8 @@ function transformGdeltArticle(
 		isAlert: !!alert,
 		alertKeyword: alert?.keyword || undefined,
 		region: detectRegion(title) ?? undefined,
-		topics: detectTopics(title)
+		topics: detectTopics(title),
+		relevanceScore: calculateRelevanceScore(article, category)
 	};
 }
 
@@ -73,22 +141,34 @@ function transformGdeltArticle(
  * Fetch news for a specific category using GDELT via proxy
  */
 export async function fetchCategoryNews(category: NewsCategory): Promise<NewsItem[]> {
-	// Build query from category keywords (GDELT requires OR queries in parentheses)
+	// Build query from category keywords - optimized for geopolitical relevance
 	const categoryQueries: Record<NewsCategory, string> = {
-		politics: '(politics OR government OR election OR congress)',
-		tech: '(technology OR software OR startup OR "silicon valley")',
-		finance: '(finance OR "stock market" OR economy OR banking)',
-		gov: '("federal government" OR "white house" OR congress OR regulation)',
-		ai: '("artificial intelligence" OR "machine learning" OR AI OR ChatGPT)',
-		intel: '(intelligence OR security OR military OR defense)'
+		politics: '(geopolitics OR "foreign policy" OR diplomacy OR sanctions OR "international relations" OR summit OR treaty)',
+		tech: '(cybersecurity OR "tech regulation" OR "chip war" OR semiconductor OR "critical infrastructure" OR "tech sanctions")',
+		finance: '(sanctions OR "central bank" OR inflation OR "trade war" OR "currency crisis" OR BRICS OR "sovereign debt")',
+		gov: '(pentagon OR "state department" OR "national security" OR executive OR "defense budget" OR NATO)',
+		ai: '("AI regulation" OR "artificial intelligence" OR "AI arms race" OR deepfake OR "AI military" OR "autonomous weapons")',
+		intel: '(espionage OR intelligence OR CIA OR "cyber attack" OR surveillance OR counterintelligence OR OSINT)'
 	};
 
+	// Prioritize high-impact sources
+	const prioritySources = [
+		'reuters.com',
+		'apnews.com',
+		'bbc.com',
+		'theguardian.com',
+		'foreignpolicy.com',
+		'foreignaffairs.com',
+		'csis.org',
+		'brookings.edu'
+	];
+
 	try {
-		// Add English language filter and source country filter for relevant results
+		// Add English language filter and focus on international/breaking news
 		const baseQuery = categoryQueries[category];
-		const fullQuery = `${baseQuery} sourcelang:english`;
-		// Build the raw GDELT URL (don't pre-encode query - let encodeURIComponent handle the whole URL once)
-		const gdeltUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=${fullQuery}&mode=artlist&maxrecords=20&format=json&sort=date`;
+		const fullQuery = `${baseQuery} sourcelang:english (domain:reuters.com OR domain:bbc.com OR domain:apnews.com OR "breaking" OR "developing")`;
+		// Build the raw GDELT URL - increase maxrecords for better filtering
+		const gdeltUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=${fullQuery}&mode=artlist&maxrecords=30&format=json&sort=date`;
 
 		// Use proxy to avoid CORS - encode the whole URL once
 		const proxyUrl = CORS_PROXY_URL + encodeURIComponent(gdeltUrl);
@@ -121,9 +201,15 @@ export async function fetchCategoryNews(category: NewsCategory): Promise<NewsIte
 		const categoryFeeds = FEEDS[category] || [];
 		const defaultSource = categoryFeeds[0]?.name || 'News';
 
-		return data.articles.map((article, index) =>
-			transformGdeltArticle(article, category, article.domain || defaultSource, index)
-		);
+		// Transform articles and sort by relevance score
+		const articles = data.articles
+			.map((article, index) =>
+				transformGdeltArticle(article, category, article.domain || defaultSource, index)
+			)
+			.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+			.slice(0, 15); // Return top 15 most relevant
+
+		return articles;
 	} catch (error) {
 		logger.error('News API', `Error fetching ${category}:`, error);
 		return [];

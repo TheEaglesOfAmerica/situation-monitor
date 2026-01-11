@@ -8,6 +8,21 @@ export interface Hotspot {
 	desc: string;
 	emergentScore?: number; // 1-100 emergent situation score
 	region?: string;
+	reasons?: string[]; // Factors contributing to the threat level
+}
+
+export interface ScoreBreakdown {
+	baseScore: number;
+	volatilityModifier: number;
+	finalScore: number;
+	factors: ScoreFactor[];
+}
+
+export interface ScoreFactor {
+	name: string;
+	impact: 'positive' | 'negative' | 'neutral';
+	weight: number; // -20 to +20
+	description: string;
 }
 
 export interface ConflictZone {
@@ -69,6 +84,104 @@ export function calculateEmergentScore(level: Hotspot['level'], volatility = 0.5
 }
 
 /**
+ * Calculate detailed score breakdown with contributing factors
+ */
+export function calculateScoreBreakdown(hotspot: Hotspot): ScoreBreakdown {
+	const baseScores: Record<Hotspot['level'], number> = {
+		critical: 90,
+		high: 70,
+		elevated: 45,
+		low: 20
+	};
+
+	const baseScore = baseScores[hotspot.level];
+	const factors: ScoreFactor[] = [];
+
+	// Generate factors based on hotspot properties
+	if (hotspot.level === 'critical') {
+		factors.push({
+			name: 'Active Conflict',
+			impact: 'negative',
+			weight: 15,
+			description: 'Ongoing military operations or major crisis'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('nuclear')) {
+		factors.push({
+			name: 'Nuclear Risk',
+			impact: 'negative',
+			weight: 10,
+			description: 'Nuclear weapons or program involvement'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('sanction')) {
+		factors.push({
+			name: 'Under Sanctions',
+			impact: 'negative',
+			weight: 8,
+			description: 'International economic sanctions in effect'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('humanitarian') || hotspot.desc.toLowerCase().includes('crisis')) {
+		factors.push({
+			name: 'Humanitarian Crisis',
+			impact: 'negative',
+			weight: 12,
+			description: 'Significant civilian population at risk'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('nato') || hotspot.desc.toLowerCase().includes('ally')) {
+		factors.push({
+			name: 'Allied Territory',
+			impact: 'positive',
+			weight: -5,
+			description: 'NATO or allied military presence'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('trade') || hotspot.desc.toLowerCase().includes('finance')) {
+		factors.push({
+			name: 'Economic Hub',
+			impact: 'neutral',
+			weight: 3,
+			description: 'Major trade or financial center'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('uprising') || hotspot.desc.toLowerCase().includes('protest')) {
+		factors.push({
+			name: 'Civil Unrest',
+			impact: 'negative',
+			weight: 10,
+			description: 'Large-scale protests or uprising'
+		});
+	}
+
+	if (hotspot.desc.toLowerCase().includes('invasion') || hotspot.desc.toLowerCase().includes('occupied')) {
+		factors.push({
+			name: 'Foreign Occupation',
+			impact: 'negative',
+			weight: 15,
+			description: 'Territory under foreign military control'
+		});
+	}
+
+	const volatilityModifier = factors.reduce((sum, f) => sum + f.weight, 0);
+	const finalScore = Math.max(1, Math.min(100, baseScore + volatilityModifier));
+
+	return {
+		baseScore,
+		volatilityModifier,
+		finalScore,
+		factors
+	};
+}
+
+/**
  * Get color for emergent score (gradient from green to red)
  */
 export function getEmergentColor(score: number): string {
@@ -117,49 +230,56 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 38.9,
 		lon: -77.0,
 		level: 'low',
-		desc: 'Washington DC — US political center, White House, Pentagon, Capitol'
+		desc: 'Washington DC — US political center, White House, Pentagon, Capitol',
+		reasons: ['Stable democratic institutions', 'Strong security apparatus', 'Economic stability']
 	},
 	{
 		name: 'Seattle',
 		lat: 47.61,
 		lon: -122.33,
 		level: 'low',
-		desc: 'Seattle — Pacific Northwest port, cloud infra, naval & aerospace hub'
+		desc: 'Seattle — Pacific Northwest port, cloud infra, naval & aerospace hub',
+		reasons: ['Major tech industry hub', 'Naval base presence', 'Pacific trade gateway']
 	},
 	{
 		name: 'New York',
 		lat: 40.71,
 		lon: -74.01,
 		level: 'low',
-		desc: 'New York — Global finance, UN headquarters, critical infrastructure'
+		desc: 'New York — Global finance, UN headquarters, critical infrastructure',
+		reasons: ['Global financial center', 'UN headquarters', 'Critical infrastructure target']
 	},
 	{
 		name: 'Los Angeles',
 		lat: 34.05,
 		lon: -118.24,
 		level: 'low',
-		desc: 'Los Angeles — Pacific trade gateway, entertainment, defense industry'
+		desc: 'Los Angeles — Pacific trade gateway, entertainment, defense industry',
+		reasons: ['Largest US port complex', 'Defense aerospace hub', 'Entertainment industry center']
 	},
 	{
 		name: 'Houston',
 		lat: 29.76,
 		lon: -95.37,
 		level: 'low',
-		desc: 'Houston — US energy capital, NASA, petrochemical hub'
+		desc: 'Houston — US energy capital, NASA, petrochemical hub',
+		reasons: ['US energy sector HQ', 'NASA Johnson Space Center', 'Petrochemical corridor']
 	},
 	{
 		name: 'Mexico City',
 		lat: 19.43,
 		lon: -99.13,
 		level: 'low',
-		desc: 'Mexico City — North American manufacturing, security and migration hub'
+		desc: 'Mexico City — North American manufacturing, security and migration hub',
+		reasons: ['USMCA manufacturing', 'Migration transit hub', 'Cartel activity in region']
 	},
 	{
 		name: 'Miami',
 		lat: 25.76,
 		lon: -80.19,
 		level: 'low',
-		desc: 'Miami — Latin America gateway, banking, Caribbean security'
+		desc: 'Miami — Latin America gateway, banking, Caribbean security',
+		reasons: ['Latin America finance gateway', 'Caribbean security operations', 'Climate vulnerability']
 	},
 	// SOUTH AMERICA
 	{
@@ -167,35 +287,40 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 10.5,
 		lon: -66.9,
 		level: 'high',
-		desc: 'Caracas — Venezuela crisis, Maduro regime, US sanctions, humanitarian emergency'
+		desc: 'Caracas — Venezuela crisis, Maduro regime, US sanctions, humanitarian emergency',
+		reasons: ['Authoritarian regime', 'Severe economic collapse', 'US sanctions', 'Mass emigration crisis', 'Russian/Chinese influence']
 	},
 	{
 		name: 'Bogotá',
 		lat: 4.71,
 		lon: -74.07,
 		level: 'elevated',
-		desc: 'Bogotá — Colombia drug trafficking, FARC remnants, Venezuela border tensions'
+		desc: 'Bogotá — Colombia drug trafficking, FARC remnants, Venezuela border tensions',
+		reasons: ['Drug cartel operations', 'FARC dissident groups', 'Venezuela border instability', 'Coca production increase']
 	},
 	{
 		name: 'São Paulo',
 		lat: -23.55,
 		lon: -46.63,
 		level: 'low',
-		desc: 'São Paulo — South American finance, BRICS economy, regional power'
+		desc: 'São Paulo — South American finance, BRICS economy, regional power',
+		reasons: ['BRICS economic weight', 'Largest South American city', 'Regional stability anchor']
 	},
 	{
 		name: 'Buenos Aires',
 		lat: -34.60,
 		lon: -58.38,
 		level: 'low',
-		desc: 'Buenos Aires — Argentina economic instability, Falklands disputes'
+		desc: 'Buenos Aires — Argentina economic instability, Falklands disputes',
+		reasons: ['Chronic inflation crisis', 'IMF debt negotiations', 'Falklands sovereignty claim']
 	},
 	{
 		name: 'Lima',
 		lat: -12.05,
 		lon: -77.04,
 		level: 'elevated',
-		desc: 'Lima — Peru political turmoil, mining, Pacific shipping lane'
+		desc: 'Lima — Peru political turmoil, mining, Pacific shipping lane',
+		reasons: ['Frequent government turnover', 'Protest movements', 'Mining sector disputes', 'Pacific trade route']
 	},
 	// EUROPE
 	{
@@ -203,63 +328,72 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 51.5,
 		lon: -0.12,
 		level: 'low',
-		desc: 'London — Financial center, Five Eyes, NATO ally'
+		desc: 'London — Financial center, Five Eyes, NATO ally',
+		reasons: ['Five Eyes intelligence', 'Global finance center', 'NATO founding member', 'Russian oligarch sanctions']
 	},
 	{
 		name: 'Brussels',
 		lat: 50.85,
 		lon: 4.35,
 		level: 'low',
-		desc: 'Brussels — EU/NATO headquarters, European policy'
+		desc: 'Brussels — EU/NATO headquarters, European policy',
+		reasons: ['EU headquarters', 'NATO HQ', 'European policy center', 'High-value target']
 	},
 	{
 		name: 'Paris',
 		lat: 48.86,
 		lon: 2.35,
 		level: 'low',
-		desc: 'Paris — EU power, nuclear arsenal, UN Security Council'
+		desc: 'Paris — EU power, nuclear arsenal, UN Security Council',
+		reasons: ['Nuclear arsenal', 'UN Security Council P5', 'EU leadership role', 'Terrorism target history']
 	},
 	{
 		name: 'Berlin',
 		lat: 52.52,
 		lon: 13.41,
 		level: 'low',
-		desc: 'Berlin — EU economic engine, energy security, NATO logistics'
+		desc: 'Berlin — EU economic engine, energy security, NATO logistics',
+		reasons: ['EU economic leader', 'Energy transition challenges', 'Ukraine support logistics', 'Historical Cold War significance']
 	},
 	{
 		name: 'Kyiv',
 		lat: 50.45,
 		lon: 30.5,
 		level: 'critical',
-		desc: 'Kyiv — Active conflict zone, Russian invasion ongoing, Western aid hub'
+		desc: 'Kyiv — Active conflict zone, Russian invasion ongoing, Western aid hub',
+		reasons: ['Active Russian invasion since 2022', 'Daily missile/drone strikes', 'Western military aid hub', 'Civilian infrastructure targeting', 'Nuclear plant concerns']
 	},
 	{
 		name: 'Moscow',
 		lat: 55.75,
 		lon: 37.6,
 		level: 'elevated',
-		desc: 'Moscow — Kremlin, Russian military command, sanctions hub'
+		desc: 'Moscow — Kremlin, Russian military command, sanctions hub',
+		reasons: ['Directing Ukraine invasion', 'Under comprehensive sanctions', 'Nuclear arsenal control', 'Wagner Group aftermath', 'Economic isolation']
 	},
 	{
 		name: 'Warsaw',
 		lat: 52.23,
 		lon: 21.01,
 		level: 'elevated',
-		desc: 'Warsaw — NATO eastern flank, Ukraine logistics, defense buildup'
+		desc: 'Warsaw — NATO eastern flank, Ukraine logistics, defense buildup',
+		reasons: ['NATO frontline state', 'Ukraine weapons transit', 'Refugee influx', 'Russian threat proximity', 'Rapid military buildup']
 	},
 	{
 		name: 'Bucharest',
 		lat: 44.43,
 		lon: 26.10,
 		level: 'elevated',
-		desc: 'Bucharest — Black Sea access, NATO base, Ukraine support'
+		desc: 'Bucharest — Black Sea access, NATO base, Ukraine support',
+		reasons: ['Black Sea NATO presence', 'Drone debris incidents', 'Ukraine grain transit', 'Russian naval threat']
 	},
 	{
 		name: 'Istanbul',
 		lat: 41.01,
 		lon: 28.98,
 		level: 'elevated',
-		desc: 'Istanbul — Bosporus control, NATO member, Russia-Ukraine mediator'
+		desc: 'Istanbul — Bosporus control, NATO member, Russia-Ukraine mediator',
+		reasons: ['Bosporus Strait control', 'Grain deal mediator', 'NATO-Russia balancing', 'Regional power broker']
 	},
 	// MIDDLE EAST
 	{
@@ -267,56 +401,64 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 35.7,
 		lon: 51.4,
 		level: 'critical',
-		desc: 'Tehran — ACTIVE UPRISING: 200+ cities, 26 provinces. Revolution protests, regime instability, nuclear program'
+		desc: 'Tehran — ACTIVE UPRISING: 200+ cities, 26 provinces. Revolution protests, regime instability, nuclear program',
+		reasons: ['Ongoing revolution protests', 'Nuclear enrichment escalation', 'Drone supplies to Russia', 'Regional proxy networks', 'Severe sanctions impact']
 	},
 	{
 		name: 'Tel Aviv',
 		lat: 32.07,
 		lon: 34.78,
 		level: 'high',
-		desc: 'Tel Aviv — Israel-Gaza conflict, active military operations'
+		desc: 'Tel Aviv — Israel-Gaza conflict, active military operations',
+		reasons: ['Gaza military operations', 'Hezbollah northern front', 'West Bank tensions', 'Iran threat escalation', 'Regional conflict risk']
 	},
 	{
 		name: 'Riyadh',
 		lat: 24.7,
 		lon: 46.7,
 		level: 'elevated',
-		desc: 'Riyadh — Saudi oil, OPEC+, Yemen conflict, regional power'
+		desc: 'Riyadh — Saudi oil, OPEC+, Yemen conflict, regional power',
+		reasons: ['OPEC+ oil production control', 'Yemen war involvement', 'Iran rivalry', 'Vision 2030 transition', 'Regional realignment']
 	},
 	{
 		name: 'Dubai',
 		lat: 25.20,
 		lon: 55.27,
 		level: 'low',
-		desc: 'Dubai — Gulf finance hub, sanctions evasion risk, trade node'
+		desc: 'Dubai — Gulf finance hub, sanctions evasion risk, trade node',
+		reasons: ['Sanctions evasion hub', 'Global trade node', 'Russian money flows', 'Regional stability']
 	},
 	{
 		name: 'Baghdad',
 		lat: 33.31,
 		lon: 44.37,
 		level: 'elevated',
-		desc: 'Baghdad — Iran influence, militia activity, oil infrastructure'
+		desc: 'Baghdad — Iran influence, militia activity, oil infrastructure',
+		reasons: ['Iran-backed militias', 'US base attacks', 'Oil infrastructure', 'ISIS remnants', 'Political instability']
 	},
 	{
 		name: 'Beirut',
 		lat: 33.89,
 		lon: 35.50,
 		level: 'high',
-		desc: 'Beirut — Hezbollah stronghold, economic collapse, Israel tensions'
+		desc: 'Beirut — Hezbollah stronghold, economic collapse, Israel tensions',
+		reasons: ['Hezbollah military buildup', 'Complete economic collapse', 'Israel border clashes', 'Government paralysis', 'Syrian refugee burden']
 	},
 	{
 		name: 'Damascus',
 		lat: 33.51,
 		lon: 36.29,
 		level: 'high',
-		desc: 'Damascus — Syrian civil war aftermath, Russian/Iranian presence'
+		desc: 'Damascus — Syrian civil war aftermath, Russian/Iranian presence',
+		reasons: ['Russian military bases', 'Iranian entrenchment', 'Israeli airstrikes', 'Humanitarian crisis', 'Reconstruction stalled']
 	},
 	{
 		name: 'Sanaa',
 		lat: 15.35,
 		lon: 44.21,
 		level: 'high',
-		desc: 'Sanaa — Houthi control, Yemen war, Red Sea attacks'
+		desc: 'Sanaa — Houthi control, Yemen war, Red Sea attacks',
+		reasons: ['Houthi Red Sea attacks', 'Shipping lane disruption', 'Iran weapons supply', 'Humanitarian catastrophe', 'Saudi coalition operations']
 	},
 	// AFRICA
 	{
@@ -324,49 +466,56 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 6.46,
 		lon: 3.39,
 		level: 'low',
-		desc: 'Lagos — West Africa finance, shipping, energy and security flashpoints'
+		desc: 'Lagos — West Africa finance, shipping, energy and security flashpoints',
+		reasons: ['West Africa economic hub', 'Oil production center', 'Regional security anchor', 'Climate migration pressure']
 	},
 	{
 		name: 'Cairo',
 		lat: 30.04,
 		lon: 31.24,
 		level: 'elevated',
-		desc: 'Cairo — Suez gateway, regional mediator, economic pressures'
+		desc: 'Cairo — Suez gateway, regional mediator, economic pressures',
+		reasons: ['Suez Canal control', 'Gaza mediation role', 'Economic crisis/IMF deals', 'Regional military power']
 	},
 	{
 		name: 'Addis Ababa',
 		lat: 9.03,
 		lon: 38.74,
 		level: 'elevated',
-		desc: 'Addis Ababa — African Union HQ, Tigray aftermath, Horn instability'
+		desc: 'Addis Ababa — African Union HQ, Tigray aftermath, Horn instability',
+		reasons: ['African Union headquarters', 'Post-Tigray reconstruction', 'Ethiopia-Eritrea tensions', 'Grand Renaissance Dam dispute']
 	},
 	{
 		name: 'Khartoum',
 		lat: 15.50,
 		lon: 32.56,
 		level: 'critical',
-		desc: 'Khartoum — Sudan civil war, humanitarian crisis, regional spillover'
+		desc: 'Khartoum — Sudan civil war, humanitarian crisis, regional spillover',
+		reasons: ['Active civil war RSF vs SAF', 'Mass displacement crisis', 'Famine conditions', 'Regional destabilization', 'Wagner Group involvement']
 	},
 	{
 		name: 'Nairobi',
 		lat: -1.29,
 		lon: 36.82,
 		level: 'low',
-		desc: 'Nairobi — East Africa hub, UN presence, regional stability anchor'
+		desc: 'Nairobi — East Africa hub, UN presence, regional stability anchor',
+		reasons: ['UN regional headquarters', 'East Africa finance center', 'Somalia border security', 'Regional diplomacy hub']
 	},
 	{
 		name: 'Cape Town',
 		lat: -33.92,
 		lon: 18.42,
 		level: 'low',
-		desc: 'Cape Town — Southern Africa shipping, energy, BRICS member'
+		desc: 'Cape Town — Southern Africa shipping, energy, BRICS member',
+		reasons: ['BRICS member state', 'Cape shipping route', 'Energy crisis management', 'Regional stability']
 	},
 	{
 		name: 'Kinshasa',
 		lat: -4.44,
 		lon: 15.27,
 		level: 'elevated',
-		desc: 'Kinshasa — DRC conflict, rare minerals, M23 rebel activity'
+		desc: 'Kinshasa — DRC conflict, rare minerals, M23 rebel activity',
+		reasons: ['M23 rebel insurgency', 'Critical mineral mining', 'Rwanda tensions', 'UN peacekeeping mission', 'Humanitarian access issues']
 	},
 	// ASIA
 	{
@@ -374,112 +523,128 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 39.9,
 		lon: 116.4,
 		level: 'elevated',
-		desc: 'Beijing — CCP headquarters, US-China tensions, tech rivalry'
+		desc: 'Beijing — CCP headquarters, US-China tensions, tech rivalry',
+		reasons: ['US-China strategic competition', 'Tech export controls', 'Taiwan ambitions', 'South China Sea claims', 'Economic slowdown']
 	},
 	{
 		name: 'Shanghai',
 		lat: 31.23,
 		lon: 121.47,
 		level: 'low',
-		desc: 'Shanghai — China trade gateway, finance, supply chain node'
+		desc: 'Shanghai — China trade gateway, finance, supply chain node',
+		reasons: ['Global supply chain hub', 'Financial center', 'Trade volume metrics', 'COVID policy aftermath']
 	},
 	{
 		name: 'Hong Kong',
 		lat: 22.32,
 		lon: 114.17,
 		level: 'elevated',
-		desc: 'Hong Kong — Pro-democracy crackdown, finance hub, autonomy erosion'
+		desc: 'Hong Kong — Pro-democracy crackdown, finance hub, autonomy erosion',
+		reasons: ['National Security Law', 'Autonomy erosion', 'Press freedom decline', 'Financial hub status at risk', 'Emigration wave']
 	},
 	{
 		name: 'Taipei',
 		lat: 25.03,
 		lon: 121.5,
 		level: 'elevated',
-		desc: 'Taipei — Taiwan Strait tensions, TSMC, China threat'
+		desc: 'Taipei — Taiwan Strait tensions, TSMC, China threat',
+		reasons: ['China invasion threat', 'TSMC semiconductor monopoly', 'US defense commitments', 'PLA military exercises', 'Global chip supply risk']
 	},
 	{
 		name: 'Tokyo',
 		lat: 35.68,
 		lon: 139.76,
 		level: 'low',
-		desc: 'Tokyo — US ally, regional security, economic power'
+		desc: 'Tokyo — US ally, regional security, economic power',
+		reasons: ['US-Japan alliance', 'Regional security anchor', 'Defense spending increase', 'North Korea threat response']
 	},
 	{
 		name: 'Seoul',
 		lat: 37.57,
 		lon: 126.98,
 		level: 'elevated',
-		desc: 'Seoul — North Korea threat, US forces, semiconductor hub'
+		desc: 'Seoul — North Korea threat, US forces, semiconductor hub',
+		reasons: ['North Korea nuclear threat', 'US military presence', 'Semiconductor production', 'China trade dependence', 'Japan relations']
 	},
 	{
 		name: 'Pyongyang',
 		lat: 39.03,
 		lon: 125.75,
 		level: 'high',
-		desc: 'Pyongyang — North Korea nuclear threat, ICBM tests, Russia ties'
+		desc: 'Pyongyang — North Korea nuclear threat, ICBM tests, Russia ties',
+		reasons: ['Nuclear weapons program', 'ICBM development', 'Russia arms deals', 'Sanctions evasion', 'Regime instability risk']
 	},
 	{
 		name: 'Delhi',
 		lat: 28.6,
 		lon: 77.2,
 		level: 'low',
-		desc: 'Delhi — India rising power, China border tensions'
+		desc: 'Delhi — India rising power, China border tensions',
+		reasons: ['China border standoff', 'Rising global power', 'Regional leadership', 'BRICS member', 'Defense modernization']
 	},
 	{
 		name: 'Mumbai',
 		lat: 19.08,
 		lon: 72.88,
 		level: 'low',
-		desc: 'Mumbai — India finance hub, naval power, terrorism target'
+		desc: 'Mumbai — India finance hub, naval power, terrorism target',
+		reasons: ['Financial center', 'Naval base presence', 'Terrorism vulnerability', 'Economic growth engine']
 	},
 	{
 		name: 'Islamabad',
 		lat: 33.69,
 		lon: 73.06,
 		level: 'elevated',
-		desc: 'Islamabad — Pakistan nuclear state, Afghanistan border, India tensions'
+		desc: 'Islamabad — Pakistan nuclear state, Afghanistan border, India tensions',
+		reasons: ['Nuclear arsenal', 'Afghanistan Taliban ties', 'India Kashmir conflict', 'Political instability', 'Economic crisis']
 	},
 	{
 		name: 'Kabul',
 		lat: 34.53,
 		lon: 69.17,
 		level: 'high',
-		desc: 'Kabul — Taliban rule, ISIS-K threat, humanitarian crisis'
+		desc: 'Kabul — Taliban rule, ISIS-K threat, humanitarian crisis',
+		reasons: ['Taliban government', 'ISIS-K attacks', 'Women rights collapse', 'Economic collapse', 'Refugee crisis']
 	},
 	{
 		name: 'Singapore',
 		lat: 1.35,
 		lon: 103.82,
 		level: 'low',
-		desc: 'Singapore — Shipping chokepoint, Asian finance hub'
+		desc: 'Singapore — Shipping chokepoint, Asian finance hub',
+		reasons: ['Malacca Strait control', 'Asian finance hub', 'US naval access', 'Regional stability']
 	},
 	{
 		name: 'Bangkok',
 		lat: 13.76,
 		lon: 100.50,
 		level: 'low',
-		desc: 'Bangkok — Southeast Asia hub, tourism, Mekong politics'
+		desc: 'Bangkok — Southeast Asia hub, tourism, Mekong politics',
+		reasons: ['ASEAN member', 'Mekong River politics', 'Military influence', 'Myanmar refugee inflow']
 	},
 	{
 		name: 'Manila',
 		lat: 14.60,
 		lon: 120.98,
 		level: 'elevated',
-		desc: 'Manila — South China Sea disputes, US alliance, China pressure'
+		desc: 'Manila — South China Sea disputes, US alliance, China pressure',
+		reasons: ['South China Sea confrontations', 'Renewed US alliance', 'China coercion', 'Strategic location']
 	},
 	{
 		name: 'Jakarta',
 		lat: -6.21,
 		lon: 106.85,
 		level: 'low',
-		desc: 'Jakarta — Largest Muslim nation, ASEAN leader, maritime security'
+		desc: 'Jakarta — Largest Muslim nation, ASEAN leader, maritime security',
+		reasons: ['ASEAN leadership', 'Maritime security role', 'Capital relocation', 'Moderate Islam influence']
 	},
 	{
 		name: 'Hanoi',
 		lat: 21.03,
 		lon: 105.85,
 		level: 'low',
-		desc: 'Hanoi — Vietnam manufacturing boom, South China Sea claimant'
+		desc: 'Hanoi — Vietnam manufacturing boom, South China Sea claimant',
+		reasons: ['Manufacturing hub shift', 'South China Sea claims', 'US partnership growth', 'China balancing']
 	},
 	// RUSSIA & CENTRAL ASIA
 	{
@@ -487,21 +652,24 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 55.03,
 		lon: 82.93,
 		level: 'elevated',
-		desc: 'Novosibirsk — Siberian logistics node, rail corridor, energy hub'
+		desc: 'Novosibirsk — Siberian logistics node, rail corridor, energy hub',
+		reasons: ['Trans-Siberian hub', 'Defense industry', 'Energy transit', 'Sanctions impact']
 	},
 	{
 		name: 'Vladivostok',
 		lat: 43.12,
 		lon: 131.89,
 		level: 'elevated',
-		desc: 'Vladivostok — Russian Pacific Fleet, China border, North Korea link'
+		desc: 'Vladivostok — Russian Pacific Fleet, China border, North Korea link',
+		reasons: ['Pacific Fleet base', 'North Korea supply route', 'China partnership', 'Sanctions workaround']
 	},
 	{
 		name: 'Almaty',
 		lat: 43.24,
 		lon: 76.95,
 		level: 'low',
-		desc: 'Almaty — Kazakhstan finance, Belt & Road, Russia influence'
+		desc: 'Almaty — Kazakhstan finance, Belt & Road, Russia influence',
+		reasons: ['Belt & Road transit', 'Russia influence zone', 'Energy production', 'Regional stability']
 	},
 	// OCEANIA
 	{
@@ -509,14 +677,16 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: -33.87,
 		lon: 151.21,
 		level: 'low',
-		desc: 'Sydney — Pacific naval access, AUS-US alliance, finance and ports'
+		desc: 'Sydney — Pacific naval access, AUS-US alliance, finance and ports',
+		reasons: ['AUKUS partnership', 'Indo-Pacific anchor', 'Pacific island influence', 'China competition']
 	},
 	{
 		name: 'Canberra',
 		lat: -35.28,
 		lon: 149.13,
 		level: 'low',
-		desc: 'Canberra — AUKUS alliance, Five Eyes, Indo-Pacific strategy'
+		desc: 'Canberra — AUKUS alliance, Five Eyes, Indo-Pacific strategy',
+		reasons: ['AUKUS nuclear subs', 'Five Eyes intel', 'Defense spending surge', 'China relationship strain']
 	},
 	// ARCTIC
 	{
@@ -524,14 +694,16 @@ export const HOTSPOTS: Hotspot[] = [
 		lat: 64.18,
 		lon: -51.72,
 		level: 'elevated',
-		desc: 'Nuuk — Greenland, US acquisition interest, Arctic strategy, Denmark tensions'
+		desc: 'Nuuk — Greenland, US acquisition interest, Arctic strategy, Denmark tensions',
+		reasons: ['US strategic interest', 'Rare earth deposits', 'Arctic shipping routes', 'Climate change access', 'Denmark sovereignty']
 	},
 	{
 		name: 'Murmansk',
 		lat: 68.97,
 		lon: 33.09,
 		level: 'elevated',
-		desc: 'Murmansk — Russian Northern Fleet, Arctic militarization, nuclear subs'
+		desc: 'Murmansk — Russian Northern Fleet, Arctic militarization, nuclear subs',
+		reasons: ['Northern Fleet base', 'Nuclear submarine port', 'Arctic militarization', 'NATO proximity', 'Northern Sea Route']
 	}
 ];
 

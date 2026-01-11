@@ -22,6 +22,7 @@ export interface NewsItem {
 	alertKeyword?: string;
 	region?: string;
 	topics?: string[];
+	relevanceScore?: number; // 0-100 relevance score for sorting
 }
 
 /**

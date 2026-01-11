@@ -14,12 +14,13 @@
 		THREAT_COLORS,
 		WEATHER_CODES,
 		calculateEmergentScore,
+		calculateScoreBreakdown,
 		getEmergentColor,
 		getEmergentLabel
 	} from '$lib/config/map';
+	import type { Hotspot, ScoreBreakdown } from '$lib/config/map';
 	import { CACHE_TTLS } from '$lib/config/api';
 	import type { CustomMonitor } from '$lib/types';
-	import type { Hotspot } from '$lib/config/map';
 
 	interface Props {
 		monitors?: CustomMonitor[];
@@ -48,6 +49,7 @@
 	let searchQuery = $state('');
 	let searchOpen = $state(false);
 	let selectedHotspot = $state<Hotspot | null>(null);
+	let selectedBreakdown = $state<ScoreBreakdown | null>(null);
 
 	// Zoom level state
 	let currentZoom = $state(1);
@@ -272,9 +274,15 @@
 
 	function focusHotspot(hotspot: Hotspot): void {
 		selectedHotspot = hotspot;
+		selectedBreakdown = calculateScoreBreakdown(hotspot);
 		searchOpen = false;
 		searchQuery = '';
 		focusOn(hotspot.lon, hotspot.lat, 3.5);
+	}
+
+	function clearSelection(): void {
+		selectedHotspot = null;
+		selectedBreakdown = null;
 	}
 
 	function handleSearchSelect(hotspot: Hotspot): void {
@@ -409,13 +417,15 @@
 		mapGroup = svg.append('g').attr('id', 'mapGroup');
 		weatherLayer = mapGroup.append('g').attr('id', 'weatherLayer');
 
-		// Setup zoom - disable scroll wheel, allow touch pinch and buttons
+		// Setup zoom - allow cmd/ctrl+scroll on desktop, touch pinch on mobile
 		zoom = d3
 			.zoom<SVGSVGElement, unknown>()
 			.scaleExtent([MIN_ZOOM, MAX_ZOOM])
 			.filter((event) => {
-				// Block scroll wheel zoom (wheel events)
-				if (event.type === 'wheel') return false;
+				// Allow wheel zoom only with cmd/ctrl key (desktop)
+				if (event.type === 'wheel') {
+					return event.metaKey || event.ctrlKey;
+				}
 				// Allow touch events (pinch zoom on mobile)
 				if (event.type.startsWith('touch')) return true;
 				// Allow mouse drag for panning
@@ -768,6 +778,38 @@
 	onMount(() => {
 		if (browser) {
 			weatherOverlayEnabled = localStorage.getItem(OVERLAY_STORAGE_KEY) === '1';
+
+			// Keyboard shortcuts
+			const handleKeydown = (e: KeyboardEvent) => {
+				// Escape to close selection/search
+				if (e.key === 'Escape') {
+					if (selectedHotspot) {
+						clearSelection();
+					}
+					if (searchOpen) {
+						searchOpen = false;
+						searchQuery = '';
+					}
+				}
+				// R to reset view
+				if (e.key === 'r' && !e.metaKey && !e.ctrlKey && document.activeElement?.tagName !== 'INPUT') {
+					resetZoom();
+				}
+				// W to toggle weather
+				if (e.key === 'w' && !e.metaKey && !e.ctrlKey && document.activeElement?.tagName !== 'INPUT') {
+					toggleWeatherOverlay();
+				}
+				// / to focus search
+				if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+					e.preventDefault();
+					const searchInput = document.querySelector('.search-input') as HTMLInputElement;
+					searchInput?.focus();
+				}
+			};
+			window.addEventListener('keydown', handleKeydown);
+
+			// Cleanup
+			return () => window.removeEventListener('keydown', handleKeydown);
 		}
 		initMap();
 		refreshWeatherSnapshots();
@@ -891,9 +933,15 @@
 					<span class="zoom-level">{Math.round(currentZoom * 100)}%</span>
 				</div>
 
+				<!-- Zoom Hint -->
+				<div class="zoom-hint">
+					<span class="hint-icon">⌘</span>
+					<span class="hint-text">+ scroll to zoom</span>
+				</div>
+
 				<!-- Legend -->
 				<div class="map-legend">
-					<div class="legend-title">Threat Level</div>
+					<div class="legend-title">Emergent Score</div>
 					<div class="legend-item">
 						<span class="legend-dot critical"></span> Critical (85-100)
 					</div>
@@ -906,18 +954,67 @@
 					<div class="legend-item">
 						<span class="legend-dot low"></span> Stable (1-34)
 					</div>
+					<div class="legend-note">Click any marker for details</div>
 				</div>
 
 				<!-- Selected Location Info -->
-				{#if selectedHotspot}
-					{@const score = calculateEmergentScore(selectedHotspot.level, 0.5)}
-					<div class="selected-info">
-						<button class="selected-close" onclick={() => (selectedHotspot = null)}>×</button>
+				{#if selectedHotspot && selectedBreakdown}
+					<div class="selected-info expanded">
+						<button class="selected-close" onclick={clearSelection}>×</button>
 						<div class="selected-header">
 							<span class="selected-name">{selectedHotspot.name}</span>
-							<span class="selected-score" style="background: {getEmergentColor(score)}">{score}</span>
+							<span class="selected-score" style="background: {getEmergentColor(selectedBreakdown.finalScore)}">
+								{selectedBreakdown.finalScore}
+							</span>
+						</div>
+						<div class="selected-label" style="color: {getEmergentColor(selectedBreakdown.finalScore)}">
+							{getEmergentLabel(selectedBreakdown.finalScore)}
 						</div>
 						<p class="selected-desc">{selectedHotspot.desc}</p>
+						
+						<!-- Score Breakdown -->
+						<div class="score-breakdown">
+							<div class="breakdown-title">Score Analysis</div>
+							<div class="breakdown-row">
+								<span>Base Score</span>
+								<span class="breakdown-value">{selectedBreakdown.baseScore}</span>
+							</div>
+							<div class="breakdown-row">
+								<span>Volatility</span>
+								<span class="breakdown-value" class:positive={selectedBreakdown.volatilityModifier > 0} class:negative={selectedBreakdown.volatilityModifier < 0}>
+									{selectedBreakdown.volatilityModifier > 0 ? '+' : ''}{selectedBreakdown.volatilityModifier}
+								</span>
+							</div>
+							<div class="breakdown-row total">
+								<span>Final Score</span>
+								<span class="breakdown-value">{selectedBreakdown.finalScore}</span>
+							</div>
+						</div>
+
+						<!-- Contributing Factors -->
+						{#if selectedBreakdown.factors.length > 0}
+							<div class="factors-section">
+								<div class="factors-title">Contributing Factors</div>
+								{#each selectedBreakdown.factors as factor}
+									<div class="factor-item" class:negative={factor.impact === 'negative'} class:positive={factor.impact === 'positive'}>
+										<span class="factor-name">{factor.name}</span>
+										<span class="factor-weight">{factor.weight > 0 ? '+' : ''}{factor.weight}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<!-- Reasons List -->
+						{#if selectedHotspot.reasons && selectedHotspot.reasons.length > 0}
+							<div class="reasons-section">
+								<div class="reasons-title">Key Factors</div>
+								<ul class="reasons-list">
+									{#each selectedHotspot.reasons as reason}
+										<li>{reason}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -1363,6 +1460,36 @@
 		min-width: 32px;
 	}
 
+	/* Zoom Hint */
+	.zoom-hint {
+		position: absolute;
+		top: 0.75rem;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		background: rgba(10, 16, 14, 0.85);
+		padding: 0.3rem 0.6rem;
+		border-radius: 4px;
+		border: 1px solid #1f3c34;
+		font-size: 0.58rem;
+		color: #6b9c8a;
+		opacity: 0.8;
+		transition: opacity 0.2s ease;
+	}
+
+	.zoom-hint:hover {
+		opacity: 1;
+	}
+
+	.hint-icon {
+		font-size: 0.7rem;
+		background: rgba(70, 190, 167, 0.2);
+		padding: 0.1rem 0.25rem;
+		border-radius: 2px;
+	}
+
 	/* Legend */
 	.map-legend {
 		position: absolute;
@@ -1418,6 +1545,14 @@
 		background: #00ff88;
 	}
 
+	.legend-note {
+		font-size: 0.52rem;
+		color: #6b9c8a;
+		margin-top: 0.3rem;
+		padding-top: 0.25rem;
+		border-top: 1px dashed #1f3c34;
+	}
+
 	/* Selected Info */
 	.selected-info {
 		position: absolute;
@@ -1469,11 +1604,133 @@
 		color: #000;
 	}
 
+	.selected-label {
+		font-size: 0.55rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-top: 0.15rem;
+		font-weight: 600;
+	}
+
 	.selected-desc {
 		font-size: 0.65rem;
 		color: #9fb6ad;
 		margin: 0.4rem 0 0;
 		line-height: 1.4;
+	}
+
+	.selected-info.expanded {
+		width: 280px;
+		max-height: 400px;
+		overflow-y: auto;
+	}
+
+	/* Score Breakdown */
+	.score-breakdown {
+		margin-top: 0.6rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid #1f3c34;
+	}
+
+	.breakdown-title,
+	.factors-title,
+	.reasons-title {
+		font-size: 0.58rem;
+		color: #8ad1bd;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: 0.3rem;
+	}
+
+	.breakdown-row {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.62rem;
+		color: #9fb6ad;
+		padding: 0.15rem 0;
+	}
+
+	.breakdown-row.total {
+		border-top: 1px dashed #1f3c34;
+		margin-top: 0.2rem;
+		padding-top: 0.3rem;
+		font-weight: 600;
+		color: #e8f7f0;
+	}
+
+	.breakdown-value {
+		font-weight: 600;
+	}
+
+	.breakdown-value.positive {
+		color: #ff6644;
+	}
+
+	.breakdown-value.negative {
+		color: #00ff88;
+	}
+
+	/* Contributing Factors */
+	.factors-section {
+		margin-top: 0.5rem;
+		padding-top: 0.4rem;
+		border-top: 1px solid #1f3c34;
+	}
+
+	.factor-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.58rem;
+		padding: 0.2rem 0.3rem;
+		margin: 0.15rem 0;
+		border-radius: 3px;
+		background: rgba(255, 255, 255, 0.03);
+	}
+
+	.factor-item.negative {
+		border-left: 2px solid #ff6644;
+	}
+
+	.factor-item.positive {
+		border-left: 2px solid #00ff88;
+	}
+
+	.factor-name {
+		color: #b8c4bf;
+	}
+
+	.factor-weight {
+		font-weight: 600;
+		color: #8ad1bd;
+	}
+
+	.factor-item.negative .factor-weight {
+		color: #ff8866;
+	}
+
+	.factor-item.positive .factor-weight {
+		color: #66ffaa;
+	}
+
+	/* Reasons Section */
+	.reasons-section {
+		margin-top: 0.5rem;
+		padding-top: 0.4rem;
+		border-top: 1px solid #1f3c34;
+	}
+
+	.reasons-list {
+		margin: 0;
+		padding-left: 1rem;
+		list-style: disc;
+	}
+
+	.reasons-list li {
+		font-size: 0.58rem;
+		color: #9fb6ad;
+		line-height: 1.5;
+		margin: 0.15rem 0;
 	}
 
 	/* Weather Tracker */
